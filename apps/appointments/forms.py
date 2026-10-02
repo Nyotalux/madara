@@ -405,8 +405,6 @@ class SlotPickerForm(forms.Form):
 # Aides
 # ---------------------------------------------------------------------------
 
-BOOKING_ROLES = ("RECEPTION", "DOCTOR", "NURSE", "ADMIN")
-
 
 def practitioners_of(clinic):
     """Praticiens réservables : médecins et infirmiers actifs de la clinique."""
@@ -418,14 +416,6 @@ def practitioners_of(clinic):
         )
         .select_related("user", "practitioner_profile")
         .order_by("user__last_name", "user__first_name")
-    )
-
-
-def slot_time_label(slot_start, slot_end=None) -> str:
-    return (
-        f"{slot_start:%H:%M}"
-        if slot_end is None
-        else f"{slot_start:%H:%M} – {slot_end:%H:%M}"
     )
 
 

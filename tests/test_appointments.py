@@ -16,7 +16,7 @@ from apps.appointments.models import Appointment
 from apps.common.context import clinic_context
 from apps.patients.models import Patient
 
-from .factories import make_staff
+from .factories import UserFactory, make_staff
 
 pytestmark = pytest.mark.django_db
 
@@ -357,7 +357,10 @@ def test_agenda_pages_render(client, team, patient):
     assert f"/rendez-vous/{appointment.pk}/".encode() in response.content
     assert patient.display_name.encode() in response.content
 
-    assert client.get(reverse("web:agenda-week"), {"date": day.isoformat()}).status_code == 200
+    assert (
+        client.get(reverse("web:agenda-week"), {"date": day.isoformat()}).status_code
+        == 200
+    )
     assert client.get(reverse("web:waiting-room")).status_code == 200
     assert client.get(reverse("web:appointment-list")).status_code == 200
     assert (
@@ -437,7 +440,9 @@ def test_create_appointment_rejects_taken_slot(client, team, patient):
     )
     assert response.status_code == 200
     assert not Appointment.objects.filter(reason="").exclude(pk=first.pk).exists()
-    assert b"disponible" in response.content.lower() or b"pris" in response.content.lower()
+    assert (
+        b"disponible" in response.content.lower() or b"pris" in response.content.lower()
+    )
 
 
 def test_doctor_cannot_book_for_a_colleague(client, team, patient):
@@ -523,6 +528,54 @@ def test_patient_detail_lists_appointments(client, team, patient):
 
 
 # ---------------------------------------------------------------------------
+# Admin
+# ---------------------------------------------------------------------------
+
+
+def test_admin_pages_render(client, team, patient):
+    day = next_open_day()
+    appointment = book(team["clinic"], patient, team["doctor_membership"], day, 9)
+    platform_admin = UserFactory.create(
+        email="superadmin@example.ma",
+        is_staff=True,
+        is_superuser=True,
+        is_platform_staff=True,
+    )
+    client.force_login(platform_admin)
+    assert client.get("/admin/appointments/appointment/").status_code == 200
+    assert (
+        client.get(
+            f"/admin/appointments/appointment/{appointment.pk}/change/"
+        ).status_code
+        == 200
+    )
+    assert client.get("/admin/appointments/appointmentcancellation/").status_code == 200
+
+
+def test_admin_confirm_action(client, team, patient):
+    day = next_open_day()
+    appointment = book(team["clinic"], patient, team["doctor_membership"], day, 9)
+    platform_admin = UserFactory.create(
+        email="superadmin2@example.ma",
+        is_staff=True,
+        is_superuser=True,
+        is_platform_staff=True,
+    )
+    client.force_login(platform_admin)
+    response = client.post(
+        "/admin/appointments/appointment/",
+        {
+            "action": "confirm_selected",
+            "_selected_action": [str(appointment.pk)],
+        },
+        follow=True,
+    )
+    assert response.status_code == 200
+    appointment.refresh_from_db()
+    assert appointment.status == STATUS.CONFIRMED
+
+
+# ---------------------------------------------------------------------------
 # API
 # ---------------------------------------------------------------------------
 
@@ -563,7 +616,9 @@ def test_api_doctor_sees_own_appointments(team, patient):
     )
     api = APIClient()
     api.force_authenticate(user=team["doctor"])
-    payload = api.get("/api/v1/appointments/", {"date": day.isoformat()}).json()["results"]
+    payload = api.get("/api/v1/appointments/", {"date": day.isoformat()}).json()[
+        "results"
+    ]
     assert len(payload) == 1
     assert payload[0]["practitioner"] == team["doctor_membership"].pk
 
@@ -664,6 +719,6 @@ def test_opening_hour_unchanged_by_appointments(team, patient):
     day = next_open_day()
     book(team["clinic"], patient, team["doctor_membership"], day, 9)
     with clinic_context(team["clinic"]):
-        assert OpeningHour.objects.filter(
-            membership=team["doctor_membership"]
-        ).count() == 6
+        assert (
+            OpeningHour.objects.filter(membership=team["doctor_membership"]).count() == 6
+        )

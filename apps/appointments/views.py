@@ -33,8 +33,7 @@ from .forms import (
     practitioners_of,
 )
 from .models import Appointment
-
-BOOKING_ROLES = ("RECEPTION", "DOCTOR", "NURSE", "ADMIN")
+from .services import BOOKING_ROLES
 
 #: Un médecin voit son propre agenda ; l'accueil et l'administrateur voient
 #: toute la clinique (et peuvent filtrer par praticien).

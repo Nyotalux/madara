@@ -111,11 +111,6 @@ def conflicts(
     }
 
 
-def has_conflict(**kwargs) -> bool:
-    found = conflicts(**kwargs)
-    return bool(found["appointments"] or found["blocked_slots"] or found["patient"])
-
-
 # ---------------------------------------------------------------------------
 # Créneaux disponibles
 # ---------------------------------------------------------------------------
@@ -289,16 +284,6 @@ def appointments_by_day(queryset) -> dict:
     for appointment in queryset:
         grouped.setdefault(appointment.local_date, []).append(appointment)
     return grouped
-
-
-def day_summary(queryset) -> dict:
-    """Compteurs du jour, par statut."""
-    summary = {"total": 0, "cancelled": 0}
-    for appointment in queryset:
-        summary["total"] += 1
-        if appointment.is_cancelled:
-            summary["cancelled"] += 1
-    return summary
 
 
 # ---------------------------------------------------------------------------

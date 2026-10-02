@@ -102,7 +102,42 @@ jalon 4.
 | Fiche imprimable | `/patients/{id}/fiche/` |
 | Recherche rapide (HTMX) | `/patients/recherche/?q=` |
 
-## 7. API mobile (jetons)
+## 7. Agenda et rendez-vous (jalon 3)
+
+Chaque rendez-vous porte une référence automatique `RDV-AAAA-00001` par clinique et
+relie un patient à un praticien (médecin ou infirmier) sur un créneau horodaté.
+La règle métier vit dans `apps/appointments/services.py` : créneaux disponibles,
+contrôle des conflits, transitions de statut — le formulaire web et l'API passent
+tous deux par elle.
+
+| Règle | Comportement |
+|-------|--------------|
+| Créneaux | déduits des horaires d'ouverture du praticien (jalon 1), moins ses rendez-vous et ses indisponibilités |
+| Conflits | un créneau ne peut être pris qu'une fois (praticien), et un patient ne peut avoir deux rendez-vous simultanés |
+| Hors horaires | toute écriture hors des horaires d'ouverture est refusée (web, API, console) |
+| Statuts | à confirmer → confirmé → arrivé → en consultation → terminé ; annulé et absent sont repris |
+| Annulation | motif + auteur journalisés ; le créneau est immédiatement libéré |
+| Terminé | une consultation terminée est définitive (pas de retour arrière) |
+
+| Écran | Route |
+|-------|-------|
+| Journée (par praticien) | `/agenda/` |
+| Semaine | `/agenda/semaine/` |
+| Salle d'attente | `/agenda/file/` |
+| Historique filtrable | `/rendez-vous/` |
+| Fiche (parcours, motif, notes) | `/rendez-vous/{id}/` |
+| Prise / modification | `/rendez-vous/nouveau/`, `/rendez-vous/{id}/modifier/` |
+| Changement de statut / action rapide | `/rendez-vous/{id}/statut/`, `/rendez-vous/{id}/statut/{statut}/` |
+| Créneaux (fragment HTMX) | `/rendez-vous/creneaux/` |
+
+API : `/api/v1/appointments/` (+ `?date=`, `?du=&au=`, `?practitioner=`, `?status=`),
+`…/{id}/status/`, `…/{id}/cancel/`, `/availability/`, `/patients/?q=`.
+
+Cloisonnement : un médecin ou un infirmier ne voit et ne modifie que ses propres
+rendez-vous ; l'accueil et l'administrateur gèrent toute la clinique. Les rappels
+automatiques arrivent au jalon 5 (le champ `reminder_sent_at` est déjà en place).
+
+## 8. API mobile (jetons)
 
 ```bash
 # Connexion
@@ -138,11 +173,13 @@ curl http://127.0.0.1:8765/api/v1/clinics/current/ \
 | `POST` | `/api/v1/patients/{id}/archive/` | archivage (administrateur) |
 | `POST` | `/api/v1/patients/{id}/restore/` | restauration (administrateur) |
 
-## 8. Données de démonstration
+## 9. Données de démonstration
 
-`python manage.py seed_demo` crée deux cliniques, leurs équipes, des horaires et
-40 dossiers patients par clinique (l'un d'eux est archivé pour illustrer le filtre).
-Options utiles : `--patients-per-clinic`, `--staff-per-clinic`, `--flush`.
+`python manage.py seed_demo` crée deux cliniques, leurs équipes, des horaires,
+40 dossiers patients et 7 jours d'agenda par clinique (l'un des dossiers est archivé
+pour illustrer le filtre ; l'agenda respecte les horaires, les conflits et affiche
+des rendez-vous déjà terminés pour que la journée soit vivante).
+Options utiles : `--patients-per-clinic`, `--staff-per-clinic`, `--agenda-days`, `--flush`.
 
 | Clinique | Slug | Comptes |
 |----------|------|---------|
@@ -152,7 +189,7 @@ Options utiles : `--patients-per-clinic`, `--staff-per-clinic`, `--flush`.
 Mot de passe commun : `Madara2026!`. Administrators plateforme : `admin@madara.ma`.
 `--flush` repart de zéro.
 
-## 9. Tests et qualité
+## 10. Tests et qualité
 
 ```bash
 pytest                       # suite complète (base de test PostgreSQL dédiée)
@@ -162,18 +199,20 @@ python manage.py makemigrations --check --dry-run
 python scripts/smoke_test.py # parcours HTTP de bout en bout (serveur démarré)
 ```
 
-`scripts/smoke_test.py` (58 vérifications) vérifie la santé du service, la connexion
-web et API, le cloisonnement entre cliniques, les refus par rôle et le parcours
-dossier patient (création web, recherche, fiche, API CRUD, archivage refusé au médecin).
+`scripts/smoke_test.py` (83 vérifications) vérifie la santé du service, la connexion
+web et API, le cloisonnement entre cliniques, les refus par rôle, le parcours dossier
+patient (création web, recherche, fiche, API CRUD, archivage refusé au médecin) et
+l'agenda (jour, semaine, salle d'attente, historique, cloisonnement par rôle, prise de
+rendez-vous refusée sans créneau valide, API créneaux/statuts/transitions).
 
-## 10. Structure du projet
+## 11. Structure du projet
 
 ```
 apps/
   common/         modèles de base, tenancy, permissions, santé, seed
   accounts/       cliniques, utilisateurs, rôles, planning, auth web et API
   patients/       dossiers patients (jalon 2 — livré)
-  appointments/   agenda et rendez-vous (jalon 3)
+  appointments/   agenda et rendez-vous (jalon 3 — livré)
   consultations/  motifs d'admission (jalon 4)
   medical_records/ dossiers et documents médicaux (jalon 4)
   notifications/  e-mails, WhatsApp, rappels (jalon 5)
@@ -187,11 +226,11 @@ tests/            tests pytest
 scripts/          outils (smoke test)
 ```
 
-## 11. Jalons
+## 12. Jalons
 
 1. Socle multi-clinique, rôles, authentification web/API, dashboard minimal — **terminé**
 2. Dossiers patients — **terminé** (web + API, recherche, impression, archivage)
-3. Agenda et rendez-vous — prochain jalon
+3. Agenda et rendez-vous — **terminé** (web + API, créneaux, conflits, salle d'attente)
 4. Consultations et dossiers médicaux
 5. Notifications et rappels
 6. Facturation, stock et salaires

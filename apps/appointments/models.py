@@ -14,7 +14,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from apps.accounts.models import BlockedSlot, Membership
+from apps.accounts.models import Membership
 from apps.common.models import BaseModel, CommentMixin
 from apps.common.numbers import format_time_fr, next_sequence
 from apps.patients.models import Patient
@@ -307,16 +307,8 @@ class Appointment(BaseModel, CommentMixin):
         return self.status == self.Status.CANCELLED
 
     @property
-    def blocks_slot(self) -> bool:
-        return self.is_active and self.status in self.BLOCKING_STATUSES
-
-    @property
     def is_past(self) -> bool:
         return bool(self.end_at and self.end_at < timezone.now())
-
-    @property
-    def is_today(self) -> bool:
-        return self.local_date == timezone.localdate()
 
     @property
     def can_be_cancelled(self) -> bool:
@@ -362,12 +354,3 @@ class AppointmentCancellation(models.Model):
 
     def __str__(self):
         return f"{self.appointment_id} annulé ({self.reason or '—'})"
-
-
-def blocked_slot_conflicts(membership: Membership, start_at, end_at):
-    """Indisponibilités ponctuelles chevauchant un créneau (utilitaire tests)."""
-    return list(
-        BlockedSlot.objects.filter(
-            membership=membership, start_at__lt=end_at, end_at__gt=start_at
-        )
-    )

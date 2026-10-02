@@ -38,6 +38,7 @@ class AppointmentAdmin(admin.ModelAdmin):
         "reason",
     )
     date_hierarchy = "start_at"
+    actions = ("confirm_selected",)
     autocomplete_fields = ("patient", "practitioner")
     inlines = [AppointmentCancellationInline]
     readonly_fields = ("reference", "created_at", "updated_at", "created_by")

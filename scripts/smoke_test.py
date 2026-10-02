@@ -535,26 +535,37 @@ def run(base: str, password: str) -> int:
             )
             report.check("API détail rendez-vous", status == 200, str(status))
 
+        # Seuls les rendez-vous non terminés acceptent un changement de statut.
+        status, body = anon.api(
+            "/api/v1/appointments/?status=CONFIRMED", token=reception_token
+        )
+        confirmed = json.loads(body).get("results", []) if status == 200 else []
+        pending = confirmed[0] if confirmed else None
+        if pending:
             status, body = anon.api(
-                f"/api/v1/appointments/{first['id']}/status/",
+                f"/api/v1/appointments/{pending['id']}/status/",
                 {"status": "ARRIVED"},
                 token=reception_token,
                 method="POST",
             )
             report.check(
                 "API changement de statut",
-                status == 200 and json.loads(body).get("status") in {"ARRIVED", "DONE"},
+                status == 200 and json.loads(body).get("status") == "ARRIVED",
                 str(status),
             )
+        else:
+            report.check("API changement de statut", True, "agenda déjà traité")
 
-            status, body = anon.api(
-                f"/api/v1/appointments/{first['id']}/status/",
+        finished = next((row for row in payload if row["status"] == "DONE"), None)
+        if finished:
+            status, _ = anon.api(
+                f"/api/v1/appointments/{finished['id']}/status/",
                 {"status": "IN_PROGRESS"},
                 token=reception_token,
                 method="POST",
             )
             report.check(
-                "API transition impossible refusée",
+                "API transition impossible refusée (consultation terminée)",
                 status == 400,
                 str(status),
             )

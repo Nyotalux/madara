@@ -6,7 +6,6 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 
-from apps.accounts.models import Membership
 from apps.patients.models import Patient
 
 from .models import Appointment
@@ -113,23 +112,3 @@ class AppointmentPatientAutocompleteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = ["id", "reference", "full_name", "display_phone"]
-
-
-class PractitionerChoiceSerializer(serializers.ModelSerializer):
-    """Praticien réservable, pour alimenter le sélecteur du mobile."""
-
-    name = serializers.CharField(source="user.full_name", read_only=True)
-    specialty = serializers.SerializerMethodField()
-    color = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Membership
-        fields = ["id", "name", "specialty", "color"]
-
-    def get_specialty(self, obj) -> str:
-        profile = getattr(obj, "practitioner_profile", None)
-        return profile.specialty.name if profile and profile.specialty_id else ""
-
-    def get_color(self, obj) -> str:
-        profile = getattr(obj, "practitioner_profile", None)
-        return profile.calendar_color if profile else "#0d6efd"
