@@ -35,7 +35,7 @@ class HealthView(APIView):
     throttle_scope = "health"
 
     @extend_schema(
-        responses={200: inline_serializer("Health", {"status": str(), "timestamp": str()})},
+        responses={200: inline_serializer("Health", {"status": "", "timestamp": ""})},
         summary="Sonde de vivacité",
         auth=[],
     )

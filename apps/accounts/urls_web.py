@@ -6,7 +6,6 @@ from django.urls import path
 
 from . import views
 
-
 urlpatterns = [
     path("connexion/", views.MadaraLoginView.as_view(), name="login"),
     path("deconnexion/", views.MadaraLogoutView.as_view(), name="logout"),

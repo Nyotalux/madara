@@ -16,7 +16,6 @@ from .api_views import (
     SwitchClinicView,
 )
 
-
 router = DefaultRouter()
 router.register("clinics", ClinicViewSet, basename="clinic")
 router.register("memberships", MembershipViewSet, basename="membership")

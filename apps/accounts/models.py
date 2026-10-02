@@ -19,7 +19,12 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from apps.common.models import TimeStampedModel, UUIDModel
+from apps.common.models import (
+    ClinicScopedManager,
+    TimeStampedModel,
+    UnscopedManager,
+    UUIDModel,
+)
 from apps.common.numbers import format_phone_fr, normalize_phone, slugify_fr
 
 PHONE_VALIDATOR = RegexValidator(
@@ -219,9 +224,15 @@ class User(AbstractUser):
 
     @property
     def clinics(self):
-        return Clinic.objects.filter(
-            membership__user=self, membership__is_active=True
-        ).distinct()
+        return (
+            Clinic.objects.filter(
+                memberships__user=self,
+                memberships__is_active=True,
+                is_active=True,
+            )
+            .distinct()
+            .order_by("name")
+        )
 
     @property
     def active_membership(self):
@@ -231,11 +242,11 @@ class User(AbstractUser):
         clinic = current_clinic.get()
         if clinic is None:
             return None
-        return self.memberships.filter(clinic=clinic).first()
+        return self.memberships.filter(clinic=clinic, is_active=True).first()
 
     @property
     def primary_membership(self):
-        memberships = self.memberships.filter(is_active=True)
+        memberships = self.memberships.filter(is_active=True, clinic__is_active=True)
         return memberships[0] if memberships else None
 
     @property
@@ -244,15 +255,19 @@ class User(AbstractUser):
         return membership.role if membership else None
 
     def has_membership(self, clinic) -> bool:
-        return self.memberships.filter(clinic=clinic, is_active=True).exists()
+        return self.memberships.filter(
+            clinic=clinic, is_active=True, clinic__is_active=True
+        ).exists()
 
     def has_active_membership(self) -> bool:
         if self.is_platform_staff:
             return True
-        return self.memberships.filter(is_active=True).exists()
+        return self.memberships.filter(is_active=True, clinic__is_active=True).exists()
 
     def role_in(self, clinic) -> str | None:
-        membership = self.memberships.filter(clinic=clinic).first()
+        membership = self.memberships.filter(
+            clinic=clinic, is_active=True, clinic__is_active=True
+        ).first()
         return membership.role if membership else None
 
     def is_doctor(self) -> bool:
@@ -297,10 +312,15 @@ class Membership(UUIDModel, TimeStampedModel):
         max_digits=12,
         decimal_places=2,
         default=0,
+        blank=True,
         validators=[MinValueValidator(0)],
     )
     is_active = models.BooleanField(_("actif"), default=True)
     notes = models.TextField(_("notes"), blank=True)
+
+    # ``objects`` filtre sur la clinique courante, ``all_objects`` non.
+    objects = ClinicScopedManager()
+    all_objects = UnscopedManager()
 
     class Meta:
         verbose_name = _("membre du personnel")

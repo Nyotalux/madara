@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from apps.common.clinic import CLINIC_SESSION_KEY
 from apps.common.decorators import require_clinic, require_roles
 
 from .forms import LoginForm, MembershipForm, UserProfileForm
@@ -41,9 +42,10 @@ class MadaraLoginView(LoginView):
         if requested:
             clinic = self.request.user.clinics.filter(pk=requested).first()
         else:
-            clinic = self.request.user.primary_membership
+            membership = self.request.user.primary_membership
+            clinic = membership.clinic if membership is not None else None
         if clinic is not None:
-            self.request.session["madara_clinic_id"] = clinic.pk
+            self.request.session[CLINIC_SESSION_KEY] = clinic.pk
         return HttpResponseRedirect(self.get_redirect_url() or reverse("web:dashboard"))
 
     def get_context_data(self, **kwargs):
@@ -71,7 +73,7 @@ def switch_clinic(request):
 
     clinic_id = request.POST.get("clinic")
     clinic = get_object_or_404(request.user.clinics, pk=clinic_id)
-    request.session["madara_clinic_id"] = clinic.pk
+    request.session[CLINIC_SESSION_KEY] = clinic.pk
     messages.success(request, _("Clinique active : %(clinic)s") % {"clinic": clinic})
     return redirect(request.POST.get("next") or reverse("web:dashboard"))
 
@@ -232,8 +234,8 @@ def staff_edit(request, pk):
 
 @login_required
 @require_clinic
-@require_roles(Membership.Role.ADMIN)
 def staff_detail(request, pk):
+    """Fiche d'un membre du personnel (lecture seule pour tout le personnel)."""
     membership = get_object_or_404(
         Membership.all_objects.select_related("user", "practitioner_profile"),
         pk=pk,

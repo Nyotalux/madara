@@ -6,7 +6,6 @@ from django.urls import path
 
 from .api_auth import LogoutView, RefreshTokenView, TokenObtainPairWithClinicView
 
-
 urlpatterns = [
     path("login/", TokenObtainPairWithClinicView.as_view(), name="login"),
     path("refresh/", RefreshTokenView.as_view(), name="refresh"),

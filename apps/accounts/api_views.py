@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.api import ok
+from apps.common.clinic import ClinicContextMixin
 from apps.common.middleware import CLINIC_SESSION_KEY
 from apps.common.permissions import HasRole, IsActiveMember
 
@@ -25,7 +26,7 @@ from .serializers import (
 )
 
 
-class MeView(APIView):
+class MeView(ClinicContextMixin, APIView):
     """Profil de l'utilisateur connecté + clinique courante."""
 
     permission_classes = [IsAuthenticated]
@@ -50,7 +51,7 @@ class MeView(APIView):
         return Response(serializer.data)
 
 
-class SwitchClinicView(APIView):
+class SwitchClinicView(ClinicContextMixin, APIView):
     """Change la clinique courante (en-tête ``X-Clinic`` au prochain appel)."""
 
     permission_classes = [IsActiveMember]
@@ -77,7 +78,7 @@ class SwitchClinicView(APIView):
         return ok(ClinicSerializer(clinic).data)
 
 
-class ClinicViewSet(viewsets.ReadOnlyModelViewSet):
+class ClinicViewSet(ClinicContextMixin, viewsets.ReadOnlyModelViewSet):
     """Cliniques accessibles à l'utilisateur connecté."""
 
     serializer_class = ClinicSerializer
@@ -98,7 +99,7 @@ class ClinicViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(self.get_serializer(clinic).data)
 
 
-class MembershipViewSet(viewsets.ReadOnlyModelViewSet):
+class MembershipViewSet(ClinicContextMixin, viewsets.ReadOnlyModelViewSet):
     """Rôles de l'utilisateur dans chaque clinique."""
 
     serializer_class = MembershipSerializer
@@ -112,7 +113,7 @@ class MembershipViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
 
-class StaffViewSet(viewsets.ReadOnlyModelViewSet):
+class StaffViewSet(ClinicContextMixin, viewsets.ReadOnlyModelViewSet):
     """Personnel de la clinique courante (mobile : annuaire du cabinet)."""
 
     serializer_class = MembershipSerializer
@@ -125,7 +126,7 @@ class StaffViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset.filter(clinic=clinic) if clinic else queryset.none()
 
 
-class SpecialtyViewSet(viewsets.ReadOnlyModelViewSet):
+class SpecialtyViewSet(ClinicContextMixin, viewsets.ReadOnlyModelViewSet):
     serializer_class = SpecialtySerializer
     permission_classes = [IsActiveMember]
     pagination_class = None
@@ -134,7 +135,7 @@ class SpecialtyViewSet(viewsets.ReadOnlyModelViewSet):
         return Specialty.objects.all()
 
 
-class OpeningHourViewSet(viewsets.ModelViewSet):
+class OpeningHourViewSet(ClinicContextMixin, viewsets.ModelViewSet):
     serializer_class = OpeningHourSerializer
     permission_classes = [IsActiveMember, HasRole.with_roles("DOCTOR", "NURSE", "ADMIN")]
 
@@ -155,7 +156,7 @@ class OpeningHourViewSet(viewsets.ModelViewSet):
         return Response(OpeningHourSerializer(hours, many=True).data)
 
 
-class BlockedSlotViewSet(viewsets.ModelViewSet):
+class BlockedSlotViewSet(ClinicContextMixin, viewsets.ModelViewSet):
     serializer_class = BlockedSlotSerializer
     permission_classes = [IsActiveMember, HasRole.with_roles("DOCTOR", "NURSE", "ADMIN")]
     filterset_fields = ["membership", "start_at", "end_at"]

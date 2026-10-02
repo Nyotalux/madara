@@ -11,6 +11,8 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from apps.common.clinic import ClinicContextMixin
+
 from .serializers import ClinicSerializer, MembershipSerializer
 
 
@@ -49,13 +51,15 @@ class RefreshTokenView(TokenRefreshView):
     permission_classes = [AllowAny]
 
 
-class LogoutView(APIView):
+class LogoutView(ClinicContextMixin, APIView):
     """Invalide la session applicative côté client (déconnexion)."""
 
     permission_classes = [AllowAny]
 
     @extend_schema(
-        request=inline_serializer("LogoutRequest", {"refresh": serializers.CharField(required=False)}),
+        request=inline_serializer(
+            "LogoutRequest", {"refresh": serializers.CharField(required=False)}
+        ),
         responses={200: None},
         summary="Déconnexion",
         auth=[],

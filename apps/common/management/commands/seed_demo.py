@@ -30,14 +30,44 @@ from apps.common.numbers import next_sequence
 DEFAULT_PASSWORD = "Madara2026!"
 
 FIRST_NAMES = [
-    "Amine", "Salma", "Youssef", "Leila", "Karim", "Nadia", "Mehdi", "Sofia",
-    "Anas", "Imane", "Rachid", "Hind", "Omar", "Fatima", "Yassine", "Meryem",
-    "Adil", "Ghita", "Hamza", "Zineb",
+    "Amine",
+    "Salma",
+    "Youssef",
+    "Leila",
+    "Karim",
+    "Nadia",
+    "Mehdi",
+    "Sofia",
+    "Anas",
+    "Imane",
+    "Rachid",
+    "Hind",
+    "Omar",
+    "Fatima",
+    "Yassine",
+    "Meryem",
+    "Adil",
+    "Ghita",
+    "Hamza",
+    "Zineb",
 ]
 LAST_NAMES = [
-    "Benali", "El Amrani", "Tazi", "Bennis", "Chakir", "Fassi", "Idrissi",
-    "Lamrani", "Ouazzani", "Sekkat", "Berrada", "Kettani", "Naciri", "Sabri",
+    "Benali",
+    "El Amrani",
+    "Tazi",
+    "Bennis",
+    "Chakir",
+    "Fassi",
+    "Idrissi",
+    "Lamrani",
+    "Ouazzani",
+    "Sekkat",
+    "Berrada",
+    "Kettani",
+    "Naciri",
+    "Sabri",
 ]
+
 
 def _slug(value: str) -> str:
     """Transforme un nom en fragment d'adresse e-mail ("El Amrani" -> "el-amrani")."""
@@ -137,7 +167,9 @@ class Command(BaseCommand):
     def _create_specialties(self) -> list[Specialty]:
         specialties = []
         for name, code in SPECIALTIES:
-            specialty, _ = Specialty.objects.get_or_create(name=name, defaults={"code": code})
+            specialty, _ = Specialty.objects.get_or_create(
+                name=name, defaults={"code": code}
+            )
             specialties.append(specialty)
         return specialties
 
@@ -283,7 +315,7 @@ class Command(BaseCommand):
                         membership=membership,
                         weekday=weekday,
                         defaults={
-                            "start_time": "09:00" if weekday < 5 else "09:00",
+                            "start_time": "09:00",
                             "end_time": "13:00" if weekday < 5 else "14:00",
                             "is_closed": is_closed,
                         },

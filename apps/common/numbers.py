@@ -36,16 +36,19 @@ def mask_phone(raw: str | None) -> str:
 
 
 def format_phone_fr(raw: str | None) -> str:
-    """Affichage lisible : ``+212 6 12-34 56 78``."""
+    """Affichage lisible : ``+212612345678`` -> ``+212 612-345678``."""
     phone = normalize_phone(raw)
     if not phone:
         return ""
-    if phone.startswith("+212") and len(phone) >= 12:
-        rest = phone[4:]
-        return f"+212 {rest[:2]}-{rest[2:4]} {rest[4:6]} {rest[6:8]} {rest[8:10]}"
+    if phone.startswith("+212"):
+        national = phone[4:]
+        if len(national) in (8, 9):
+            return f"+212 {national[:3]}-{national[3:]}"
+        return f"+212 {national}" if national else phone
+    if phone.startswith("0"):
+        return f"{phone[:4]}-{phone[4:]}" if len(phone) == 10 else phone
     if phone.startswith("+") and len(phone) == 10:
-        rest = phone[1:]
-        return f"+{rest[:2]} {rest[2:4]} {rest[4:6]} {rest[6:8]} {rest[8:10]}"
+        return f"+{phone[1:3]} {phone[3:5]} {phone[5:7]} {phone[7:9]} {phone[9:]}"
     return phone
 
 

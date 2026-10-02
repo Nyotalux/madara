@@ -123,7 +123,8 @@ class MembershipForm(forms.ModelForm):
         self.clinic = clinic
         super().__init__(*args, **kwargs)
         if clinic is not None:
-            self.fields["employee_number"].help_text = f"Unique au sein de {clinic.name}."
+            label = getattr(clinic, "name", clinic)
+            self.fields["employee_number"].help_text = f"Unique au sein de {label}."
 
     def clean(self):
         cleaned = super().clean()
