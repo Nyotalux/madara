@@ -57,7 +57,9 @@ def agenda(request, vue="jour"):
     """
     clinic = request.clinic
     tz = services.clinic_timezone(clinic)
-    day = parse_day(request.GET.get("date"), timezone.localtime(tz).date())
+    day = parse_day(
+        request.GET.get("date"), timezone.localtime(timezone.now(), tz).date()
+    )
     view = request.GET.get("vue") or vue
     if view not in {"jour", "semaine"}:
         view = "jour"
@@ -105,7 +107,9 @@ def waiting_room(request):
     """File d'attente : rendez-vous du jour arrivés ou confirmés."""
     clinic = request.clinic
     tz = services.clinic_timezone(clinic)
-    day = parse_day(request.GET.get("date"), timezone.localtime(tz).date())
+    day = parse_day(
+        request.GET.get("date"), timezone.localtime(timezone.now(), tz).date()
+    )
     start, end = services.day_bounds(day, tz)
 
     appointments = services.agenda_queryset(
@@ -366,7 +370,7 @@ def appointment_quick_status(request, pk, status):
     else:
         messages.success(
             request,
-            _("%(patient)s : %s.")
+            _("%(patient)s : %(status)s.")
             % {
                 "patient": appointment.patient.display_name,
                 "status": appointment.get_status_display(),
@@ -500,7 +504,7 @@ def _range_from_params(params, tz):
         start, _ = services.day_bounds(end_day, tz)
         _, end = services.day_bounds(end_day + timedelta(days=1), tz)
         return start, end
-    today = timezone.localtime(tz).date()
+    today = timezone.localtime(timezone.now(), tz).date()
     return services.day_bounds(today - timedelta(days=7), tz)
 
 

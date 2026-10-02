@@ -214,7 +214,10 @@ class AppointmentViewSet(ClinicContextMixin, ModelViewSet):
     def availability(self, request):
         clinic = getattr(request, "clinic", None)
         tz = services.clinic_timezone(clinic)
-        day = _parse_date(request.query_params.get("date"), timezone.localtime(tz).date())
+        day = _parse_date(
+            request.query_params.get("date"),
+            timezone.localtime(timezone.now(), tz).date(),
+        )
 
         practitioners = practitioners_of(clinic)
         practitioner_id = request.query_params.get("practitioner")
@@ -237,7 +240,9 @@ class AppointmentViewSet(ClinicContextMixin, ModelViewSet):
                     "practitioner": practitioner.pk,
                     "practitioner_name": practitioner.user.full_name,
                     "day": day.isoformat(),
-                    "slots": SlotSerializer(slots, many=True).data,
+                    "slots": SlotSerializer(
+                        [{"start": start, "end": end} for start, end in slots], many=True
+                    ).data,
                 }
             )
         return Response(

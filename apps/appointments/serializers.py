@@ -27,7 +27,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
         model = Appointment
         fields = [
             "id",
-            "uuid",
             "reference",
             "patient",
             "patient_reference",
@@ -50,7 +49,6 @@ class AppointmentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             "id",
-            "uuid",
             "reference",
             "end_at",
             "cancelled_at",
@@ -102,7 +100,7 @@ class SlotSerializer(serializers.Serializer):
     label = serializers.SerializerMethodField()
 
     def get_label(self, obj) -> str:
-        start, end = obj
+        start, end = obj["start"], obj["end"]
         return f"{timezone.localtime(start):%H:%M} – {timezone.localtime(end):%H:%M}"
 
 

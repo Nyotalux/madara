@@ -120,12 +120,15 @@ class AppointmentForm(forms.ModelForm):
 
     def available_slots(self):
         """Créneaux proposés pour le praticien et la date choisis."""
-        practitioner = self.cleaned_data.get("practitioner") if self.is_bound else None
-        day = self.cleaned_data.get("day") if self.is_bound else None
+        # Pendant la construction du formulaire, ``cleaned_data`` n'existe pas
+        # encore : on retombe alors sur les valeurs initiales.
+        data = getattr(self, "cleaned_data", {})
+        practitioner = self._resolve_practitioner(data.get("practitioner"))
         if practitioner is None:
-            practitioner = self._bound_value("practitioner") or self.initial.get(
-                "practitioner"
+            practitioner = self._resolve_practitioner(
+                self._bound_value("practitioner") or self.initial.get("practitioner")
             )
+        day = data.get("day")
         if day is None:
             day = self._bound_value("day") or self.initial.get("day")
         if not practitioner or not day or self.clinic is None:
@@ -137,6 +140,14 @@ class AppointmentForm(forms.ModelForm):
             tz=services.clinic_timezone(self.clinic),
             ignore_appointment=self.instance if self.instance.pk else None,
         )
+
+    def _resolve_practitioner(self, value):
+        """Accepte un praticien, son identifiant (valeur initiale) ou ``None``."""
+        if not value:
+            return None
+        if isinstance(value, Membership):
+            return value
+        return self.fields["practitioner"].queryset.filter(pk=value).first()
 
     def _bound_value(self, name):
         value = self.data.get(name) if self.is_bound else None
@@ -209,14 +220,16 @@ class AppointmentForm(forms.ModelForm):
                     ),
                 )
                 return cleaned
-            start_at = timezone.make_aware(
-                datetime.combine(day, slots[0][0].timetz().replace(tzinfo=None)),
-                services.clinic_timezone(self.clinic),
-            )
+            # Heure locale du premier créneau libre : la conversion en datetime
+            # conscient est faite juste après, avec le fuseau de la clinique.
+            start_at = datetime.combine(day, slots[0][0].time())
             cleaned["slot"] = start_at.strftime("%Y-%m-%dT%H:%M")
 
-        cleaned["start_at"] = timezone.make_aware(
-            start_at, services.clinic_timezone(self.clinic)
+        zone = services.clinic_timezone(self.clinic)
+        cleaned["start_at"] = (
+            timezone.make_aware(start_at, zone)
+            if timezone.is_naive(start_at)
+            else start_at.astimezone(zone)
         )
         duration = self._duration_minutes(practitioner, self.clinic)
         cleaned["end_at"] = cleaned["start_at"] + timedelta(minutes=duration)

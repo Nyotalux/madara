@@ -92,9 +92,16 @@ class PractitionerProfileFactory(DjangoModelFactory):
 
 
 def make_staff(clinic, role: str, *, first_name="Amine", last_name="Benali"):
-    """Crée un utilisateur avec un rôle dans la clinique donnée."""
+    """Crée un utilisateur avec un rôle dans la clinique donnée.
+
+    L'e-mail est suffixé par le nombre d'utilisateurs déjà créés : deux
+    praticiens homonymes dans la même clinique ne se chevauchent pas.
+    """
     user = UserFactory.create(
-        email=f"{role.lower()}.{last_name.lower()}.{clinic.pk}@example.ma",
+        email=(
+            f"{role.lower()}.{last_name.lower()}.{clinic.pk}."
+            f"{User.objects.count()}@example.ma"
+        ),
         first_name=first_name,
         last_name=last_name,
     )

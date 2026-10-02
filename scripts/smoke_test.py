@@ -1,7 +1,8 @@
-"""Test de fumée HTTP de bout en bout (jalons 1 et 2).
+"""Test de fumée HTTP de bout en bout (jalons 1 à 3).
 
 Vérifie la connexion web, le cloisonnement multi-cliniques, les permissions par
-rôle et le parcours dossier patient (web + API), en parlant au serveur.
+rôle, le parcours dossier patient (web + API) et l'agenda des rendez-vous
+(web + API), en parlant au serveur.
 
     python manage.py runserver 8765        # dans un terminal
     python scripts/smoke_test.py            # dans un autre
@@ -23,6 +24,8 @@ import urllib.request
 CSRF_RE = re.compile(r'name="csrfmiddlewaretoken" value="([^"]+)"')
 STAFF_LINK_RE = re.compile(r'href="(/personnel/\d+/)"')
 PATIENT_LINK_RE = re.compile(r'href="(/patients/\d+/)"')
+APPOINTMENT_LINK_RE = re.compile(r'href="(/rendez-vous/\d+/)"')
+APPOINTMENT_LINK_RE = re.compile(r'href="(/rendez-vous/\d+/)"')
 
 
 class Browser:
@@ -240,6 +243,73 @@ def run(base: str, password: str) -> int:
     status, _ = reception.get("/patients/nouveau/")
     report.check("accueil : création d'un dossier autorisée", status == 200, str(status))
 
+    # --- Agenda et rendez-vous (web) ---------------------------------------
+    status, body = doctor.get("/agenda/")
+    report.check("agenda du médecin", status == 200 and "Agenda" in body, str(status))
+    report.check("menu Rendez-vous cliquable", 'href="/agenda/"' in body)
+    status, _ = doctor.get("/agenda/semaine/")
+    report.check("agenda hebdomadaire", status == 200, str(status))
+    status, body = doctor.get("/agenda/file/")
+    report.check("salle d'attente", status == 200, str(status))
+
+    status, body = doctor.get("/rendez-vous/")
+    report.check(
+        "historique des rendez-vous",
+        status == 200 and re.search(r"RDV-\d{4}-\d{5}", body) is not None,
+        str(status),
+    )
+    doctor_appointments = sorted(set(APPOINTMENT_LINK_RE.findall(body)))
+    report.check(
+        "agenda du médecin cloisonné",
+        status == 200 and 0 < len(doctor_appointments) <= 60,
+        f"{len(doctor_appointments)} rendez-vous",
+    )
+
+    if doctor_appointments:
+        status, body = doctor.get(doctor_appointments[0])
+        report.check(
+            "fiche de rendez-vous",
+            status == 200 and "Parcours du rendez-vous" in body,
+            doctor_appointments[0],
+        )
+
+    status, body = doctor.get("/rendez-vous/nouveau/")
+    report.check(
+        "formulaire de prise de rendez-vous",
+        status == 200 and "Créneau disponible" in body,
+        str(status),
+    )
+
+    status, body = reception.get("/agenda/")
+    reception_appointments = sorted(set(APPOINTMENT_LINK_RE.findall(body)))
+    report.check(
+        "agenda de l'accueil : toute la clinique",
+        status == 200 and len(reception_appointments) >= len(doctor_appointments),
+        f"{len(reception_appointments)} rendez-vous",
+    )
+    report.check(
+        "compteur « rendez-vous » du tableau de bord",
+        "Agenda du jour" in reception.get("/")[1],
+    )
+
+    status, _, url = reception.post(
+        "/rendez-vous/nouveau/",
+        {
+            "patient": patient_links[0].split("/")[-2] if patient_links else "",
+            "practitioner": "",
+            "day": "",
+            "slot": "",
+            "kind": "CONSULTATION",
+            "status": "CONFIRMED",
+            "reason": "Rendez-vous de démonstration",
+        },
+    )
+    report.check(
+        "prise de rendez-vous refusée sans créneau valide",
+        status == 200 and url.rstrip("/").endswith("/rendez-vous/nouveau"),
+        str(status),
+    )
+
     # --- Connexion administrateur de clinique ------------------------------
     admin = Browser(base)
     status, _, _ = admin.post(
@@ -440,6 +510,87 @@ def run(base: str, password: str) -> int:
     status, _ = anon.api("/api/v1/me/")
     report.check("API /me/ sans jeton refusé", status == 401, str(status))
 
+    # --- API agenda et rendez-vous ----------------------------------------
+    status, body = anon.api(
+        "/api/v1/auth/login/",
+        {"email": "reception@clinique-al-amal.ma", "password": password},
+    )
+    reception_token = json.loads(body).get("access") if status == 200 else None
+    if reception_token:
+        status, body = anon.api("/api/v1/appointments/", token=reception_token)
+        report.check("API liste des rendez-vous", status == 200, str(status))
+        payload = json.loads(body).get("results", [])
+        report.check(
+            "API rendez-vous cloisonnés par clinique",
+            status == 200
+            and payload
+            and all(row["reference"].startswith("RDV-") for row in payload),
+            f"{len(payload)} rendez-vous",
+        )
+        first = payload[0] if payload else None
+
+        if first:
+            status, body = anon.api(
+                f"/api/v1/appointments/{first['id']}/", token=reception_token
+            )
+            report.check("API détail rendez-vous", status == 200, str(status))
+
+            status, body = anon.api(
+                f"/api/v1/appointments/{first['id']}/status/",
+                {"status": "ARRIVED"},
+                token=reception_token,
+                method="POST",
+            )
+            report.check(
+                "API changement de statut",
+                status == 200 and json.loads(body).get("status") in {"ARRIVED", "DONE"},
+                str(status),
+            )
+
+            status, body = anon.api(
+                f"/api/v1/appointments/{first['id']}/status/",
+                {"status": "IN_PROGRESS"},
+                token=reception_token,
+                method="POST",
+            )
+            report.check(
+                "API transition impossible refusée",
+                status == 400,
+                str(status),
+            )
+
+        status, body = anon.api(
+            "/api/v1/appointments/availability/?date=2030-01-07",
+            token=reception_token,
+        )
+        slots = json.loads(body).get("practitioners", []) if status == 200 else []
+        report.check(
+            "API créneaux disponibles",
+            status == 200 and any(row["slots"] for row in slots),
+            str(status),
+        )
+
+        status, body = anon.api(
+            "/api/v1/appointments/patients/?q=Benali", token=reception_token
+        )
+        report.check(
+            "API recherche patient pour rendez-vous",
+            status == 200 and isinstance(json.loads(body), list),
+            str(status),
+        )
+
+    if token:
+        status, body = anon.api("/api/v1/appointments/", token=token)
+        report.check(
+            "API médecin : ses seuls rendez-vous",
+            status == 200
+            and all(
+                row["practitioner"] == json.loads(body)["results"][0]["practitioner"]
+                for row in json.loads(body)["results"]
+            ),
+            str(status),
+        )
+
     # --- Comptabilité : API patients refusée --------------------------------
     status, body = anon.api(
         "/api/v1/auth/login/",
@@ -449,6 +600,8 @@ def run(base: str, password: str) -> int:
     if accountant_token:
         status, _ = anon.api("/api/v1/patients/", token=accountant_token)
         report.check("API comptabilité : patients refusés", status == 403, str(status))
+        status, _ = anon.api("/api/v1/appointments/", token=accountant_token)
+        report.check("API comptabilité : rendez-vous refusés", status == 403, str(status))
 
     # --- Cloisonnement API : en-tete X-Clinic hors perimetre ---------------
     if token:

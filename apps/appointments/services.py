@@ -183,6 +183,39 @@ def available_slots(
     return slots
 
 
+def within_opening_hours(
+    practitioner: Membership,
+    start_at,
+    end_at,
+    *,
+    clinic=None,
+    tz=None,
+) -> bool:
+    """Le créneau est-il couvert par les horaires d'ouverture du praticien ?
+
+    Les créneaux proposés par l'API et le formulaire en tiennent déjà compte ;
+    ce contrôle protège les écritures directes (API, imports, console).
+    """
+    clinic = clinic or practitioner.clinic
+    zone = tz or clinic_timezone(clinic)
+    day = _as_local_date(start_at, zone)
+    windows = []
+    for opening in OpeningHour.objects.filter(
+        membership=practitioner, weekday=day.weekday(), is_closed=False
+    ):
+        window_start = timezone.make_aware(
+            datetime.combine(day, opening.start_time), zone
+        )
+        window_end = timezone.make_aware(datetime.combine(day, opening.end_time), zone)
+        windows.append((window_start, window_end))
+    if not windows:
+        return False
+    return any(
+        window_start <= start_at and end_at <= window_end
+        for window_start, window_end in windows
+    )
+
+
 def _slot_minutes(practitioner: Membership, clinic) -> int:
     profile = getattr(practitioner, "practitioner_profile", None)
     if profile is not None and profile.consultation_duration_minutes:
@@ -308,6 +341,13 @@ def book_appointment(
     if end_at <= start_at:
         raise ValidationError({"end_at": _("La fin doit être postérieure au début.")})
 
+    if not within_opening_hours(practitioner, start_at, end_at, clinic=clinic):
+        day = _as_local_date(start_at, clinic_timezone(clinic))
+        raise ValidationError(
+            _("Le créneau demandé est hors des horaires du praticien (%s).")
+            % day.strftime("%d/%m/%Y")
+        )
+
     # Les lignes concurrentes sont verrouillées : deux réservations simultanées
     # sur le même créneau ne peuvent pas passer entre les deux contrôles.
     list(
@@ -382,6 +422,11 @@ def reschedule(
         .exclude(pk=appointment.pk)
         .values_list("pk", flat=True)
     )
+
+    if not within_opening_hours(
+        appointment.practitioner, start_at, end_at, clinic=clinic
+    ):
+        raise ValidationError(_("Le nouveau créneau est hors des horaires du praticien."))
 
     appointment.start_at = start_at
     appointment.end_at = end_at
