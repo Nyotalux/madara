@@ -99,7 +99,10 @@ class UserAdmin(DjangoUserAdmin):
     filter_horizontal = ["groups", "user_permissions"]
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        (_("Identité"), {"fields": ("first_name", "last_name", "phone", "avatar", "locale")}),
+        (
+            _("Identité"),
+            {"fields": ("first_name", "last_name", "phone", "avatar", "locale")},
+        ),
         (
             _("Plateforme"),
             {"fields": ("is_platform_staff", "is_staff", "is_superuser", "is_active")},
@@ -140,7 +143,11 @@ class PractitionerProfileAdmin(admin.ModelAdmin):
         "years_of_experience",
     ]
     list_filter = ["profession", "specialty"]
-    search_fields = ["membership__user__email", "membership__user__last_name", "license_number"]
+    search_fields = [
+        "membership__user__email",
+        "membership__user__last_name",
+        "license_number",
+    ]
     autocomplete_fields = ["membership", "specialty"]
 
 

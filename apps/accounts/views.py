@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import LoginView, LogoutView
@@ -34,7 +35,7 @@ class MadaraLoginView(LoginView):
     redirect_authenticated_user = True
 
     def form_valid(self, form):
-        response = super().form_valid(form)
+        super().form_valid(form)
         requested = self.request.POST.get("clinic")
         clinic = None
         if requested:
@@ -43,15 +44,12 @@ class MadaraLoginView(LoginView):
             clinic = self.request.user.primary_membership
         if clinic is not None:
             self.request.session["madara_clinic_id"] = clinic.pk
-        next_url = self.get_redirect_url()
-        return HttpResponseRedirect(next_url or reverse("web:dashboard"))
+        return HttpResponseRedirect(self.get_redirect_url() or reverse("web:dashboard"))
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        context["clinics"] = (
-            user.clinics.all() if user.is_authenticated else []
-        )
+        context["clinics"] = user.clinics.all() if user.is_authenticated else []
         return context
 
 
@@ -162,7 +160,8 @@ def staff_list(request):
     )
     count_by_role = {row["role"]: row["total"] for row in counts}
     role_rows = [
-        (value, label, count_by_role.get(value, 0)) for value, label in Membership.Role.choices
+        (value, label, count_by_role.get(value, 0))
+        for value, label in Membership.Role.choices
     ]
 
     return render(
@@ -186,8 +185,7 @@ def staff_create(request):
         membership = form.save()
         messages.success(
             request,
-            _("Membre du personnel enregistré : %(name)s")
-            % {"name": membership.user},
+            _("Membre du personnel enregistré : %(name)s") % {"name": membership.user},
         )
         return redirect("web:staff-detail", pk=membership.pk)
 

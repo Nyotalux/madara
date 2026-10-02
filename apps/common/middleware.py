@@ -27,20 +27,18 @@ class CurrentClinicMiddleware:
         user = getattr(request, "user", None)
         authenticated = bool(user and user.is_authenticated)
 
-        current_user.set(user if authenticated else None)
-
-        clinic = None
-        if authenticated:
-            clinic = self._resolve(request, user)
+        clinic = self._resolve(request, user) if authenticated else None
 
         request.clinic = clinic
         request.clinic_membership = self._membership(user, clinic)
-        current_clinic.set(clinic)
+
+        user_token = current_user.set(user if authenticated else None)
+        clinic_token = current_clinic.set(clinic)
         try:
             return self.get_response(request)
         finally:
-            current_clinic.reset()
-            current_user.reset()
+            current_clinic.reset(clinic_token)
+            current_user.reset(user_token)
 
     # -- interne ---------------------------------------------------------
 
@@ -70,9 +68,7 @@ class CurrentClinicMiddleware:
         session_clinic_id = request.session.get(CLINIC_SESSION_KEY)
         if session_clinic_id:
             clinic = (
-                user.memberships.filter(
-                    clinic_id=session_clinic_id, is_active=True
-                )
+                user.memberships.filter(clinic_id=session_clinic_id, is_active=True)
                 .select_related("clinic")
                 .values_list("clinic", flat=True)
                 .first()

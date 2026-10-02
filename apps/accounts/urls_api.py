@@ -8,15 +8,14 @@ from rest_framework.routers import DefaultRouter
 from .api_views import (
     BlockedSlotViewSet,
     ClinicViewSet,
-    MeView,
     MembershipViewSet,
+    MeView,
     OpeningHourViewSet,
     SpecialtyViewSet,
     StaffViewSet,
     SwitchClinicView,
 )
 
-app_name = "accounts_api"
 
 router = DefaultRouter()
 router.register("clinics", ClinicViewSet, basename="clinic")

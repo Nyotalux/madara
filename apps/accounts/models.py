@@ -59,7 +59,9 @@ class Clinic(TimeStampedModel):
     logo = models.ImageField(_("logo"), upload_to="clinics/", blank=True, null=True)
 
     currency = models.CharField(_("devise"), max_length=8, default="MAD")
-    timezone = models.CharField(_("fuseau horaire"), max_length=64, default="Africa/Casablanca")
+    timezone = models.CharField(
+        _("fuseau horaire"), max_length=64, default="Africa/Casablanca"
+    )
     language = models.CharField(_("langue"), max_length=8, default="fr")
     tax_rate = models.DecimalField(
         _("taux de TVA par défaut"),
@@ -152,7 +154,13 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractUser):
-    """Compte d'accès global, rattaché à une ou plusieurs cliniques."""
+    """Compte d'accès global, rattaché à une ou plusieurs cliniques.
+
+    Le champ ``username`` d'``AbstractUser`` est supprimé : l'identifiant de
+    connexion est l'adresse e-mail.
+    """
+
+    username = None
 
     email = models.EmailField(_("e-mail"), unique=True)
     first_name = models.CharField(_("prénom"), max_length=150, blank=True)

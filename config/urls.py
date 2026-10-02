@@ -12,11 +12,6 @@ admin.site.site_header = "Madara - Administration"
 admin.site.site_title = "Madara"
 admin.site.index_title = "Administration de la plateforme"
 
-api_v1 = [
-    path("auth/", include("apps.accounts.urls_auth")),
-    path("", include("apps.accounts.urls_api")),
-]
-
 urlpatterns = [
     # --- Sante (monitoring)
     path("health/", HealthView.as_view(), name="health"),
@@ -25,15 +20,16 @@ urlpatterns = [
     # --- Back-office Django
     path("admin/", admin.site.urls),
     # --- API REST (applications mobiles)
-    path("api/v1/", include(api_v1)),
+    path("api/v1/auth/", include("apps.accounts.urls_auth")),
+    path("api/v1/", include("apps.accounts.urls_api")),
     path("api/v1/schema/", SpectacularAPIView.as_view(), name="api-schema"),
     path(
         "api/v1/docs/",
         SpectacularSwaggerView.as_view(url_name="api-schema"),
         name="api-docs",
     ),
-    # --- Interface web du personnel
-    path("", include("apps.accounts.urls")),
+    # --- Interface web du personnel (namespace « web »)
+    path("", include("config.urls_web")),
 ]
 
 if settings.DEBUG:

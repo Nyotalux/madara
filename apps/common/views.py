@@ -9,6 +9,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET
+from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -33,6 +34,11 @@ class HealthView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = "health"
 
+    @extend_schema(
+        responses={200: inline_serializer("Health", {"status": str(), "timestamp": str()})},
+        summary="Sonde de vivacité",
+        auth=[],
+    )
     def get(self, request):
         return Response({"status": "ok", "timestamp": timezone.now().isoformat()})
 

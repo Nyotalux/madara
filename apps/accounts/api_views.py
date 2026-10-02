@@ -18,8 +18,8 @@ from .models import BlockedSlot, Clinic, Membership, OpeningHour, Specialty
 from .serializers import (
     BlockedSlotSerializer,
     ClinicSerializer,
-    MeSerializer,
     MembershipSerializer,
+    MeSerializer,
     OpeningHourSerializer,
     SpecialtySerializer,
 )
@@ -158,7 +158,7 @@ class OpeningHourViewSet(viewsets.ModelViewSet):
 class BlockedSlotViewSet(viewsets.ModelViewSet):
     serializer_class = BlockedSlotSerializer
     permission_classes = [IsActiveMember, HasRole.with_roles("DOCTOR", "NURSE", "ADMIN")]
-    filterset_fields = ["membership", "start_at__gte", "end_at__lte"]
+    filterset_fields = ["membership", "start_at", "end_at"]
 
     def get_queryset(self):
         clinic = getattr(self.request, "clinic", None)

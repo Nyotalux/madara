@@ -22,9 +22,7 @@ def nightly_maintenance():
     from apps.medical_records.models import RecordAccessLog
 
     cutoff = timezone.now() - timezone.timedelta(days=365)
-    deleted, _ = RecordAccessLog.all_objects.filter(
-        created_at__lt=cutoff
-    ).delete()
+    deleted, _ = RecordAccessLog.all_objects.filter(created_at__lt=cutoff).delete()
     summary["access_logs_purged"] = deleted
 
     logger.info("Maintenance nocturne terminée : %s", summary)

@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     "django_htmx",
     "rest_framework",
     "django_filters",
+    "drf_spectacular",
     # --- Applications du projet
     "apps.common",
     "apps.accounts",
@@ -167,9 +168,7 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
-    },
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
 # Types de fichiers acceptes pour les pieces jointes (scans, ordonnances...).
@@ -197,9 +196,7 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ),
-    "DEFAULT_PERMISSION_CLASSES": (
-        "rest_framework.permissions.IsAuthenticated",
-    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",
@@ -265,9 +262,7 @@ NOTIFICATIONS = {
     "WHATSAPP_PROVIDER": env("WHATSAPP_PROVIDER", default="console"),
     "META_WHATSAPP_TOKEN": env("META_WHATSAPP_TOKEN", default=""),
     "META_WHATSAPP_PHONE_ID": env("META_WHATSAPP_PHONE_ID", default=""),
-    "META_WHATSAPP_API_VERSION": env(
-        "META_WHATSAPP_API_VERSION", default="v21.0"
-    ),
+    "META_WHATSAPP_API_VERSION": env("META_WHATSAPP_API_VERSION", default="v21.0"),
     "TWILIO_ACCOUNT_SID": env("TWILIO_ACCOUNT_SID", default=""),
     "TWILIO_AUTH_TOKEN": env("TWILIO_AUTH_TOKEN", default=""),
     "TWILIO_WHATSAPP_FROM": env("TWILIO_WHATSAPP_FROM", default=""),
@@ -332,6 +327,10 @@ LOGGING = {
     },
     "root": {"handlers": ["console"], "level": env("LOG_LEVEL", default="INFO")},
     "loggers": {
-        "django.db.backends": {"level": "WARNING", "handlers": ["console"], "propagate": False},
+        "django.db.backends": {
+            "level": "WARNING",
+            "handlers": ["console"],
+            "propagate": False,
+        },
     },
 }

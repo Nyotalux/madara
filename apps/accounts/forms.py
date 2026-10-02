@@ -55,7 +55,7 @@ class LoginForm(AuthenticationForm):
     }
 
     def __init__(self, request=None, *args, **kwargs):
-        super().__init__(request=request, *args, **kwargs)
+        super().__init__(request, *args, **kwargs)
         self.fields["username"].label = "E-mail"
 
     def clean_username(self):
@@ -109,9 +109,7 @@ class MembershipForm(forms.ModelForm):
         widgets = {
             "role": forms.Select(attrs={"class": "form-select"}),
             "employee_number": forms.TextInput(attrs={"class": "form-control"}),
-            "hire_date": forms.DateInput(
-                attrs={"class": "form-control", "type": "date"}
-            ),
+            "hire_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "contract_end_date": forms.DateInput(
                 attrs={"class": "form-control", "type": "date"}
             ),
@@ -125,9 +123,7 @@ class MembershipForm(forms.ModelForm):
         self.clinic = clinic
         super().__init__(*args, **kwargs)
         if clinic is not None:
-            self.fields["employee_number"].help_text = (
-                f"Unique au sein de {clinic.name}."
-            )
+            self.fields["employee_number"].help_text = f"Unique au sein de {clinic.name}."
 
     def clean(self):
         cleaned = super().clean()

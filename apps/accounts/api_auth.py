@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 from django.utils.translation import gettext as _
-from drf_spectacular.utils import extend_schema
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .serializers import ClinicSerializer, MembershipSerializer
@@ -55,6 +54,12 @@ class LogoutView(APIView):
 
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=inline_serializer("LogoutRequest", {"refresh": serializers.CharField(required=False)}),
+        responses={200: None},
+        summary="Déconnexion",
+        auth=[],
+    )
     def post(self, request):
         refresh = request.data.get("refresh")
         if not refresh:

@@ -31,7 +31,11 @@ class IsPlatformStaff(permissions.BasePermission):
     message = "Réservé aux administrateurs de la plateforme."
 
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.is_platform_staff)
+        return bool(
+            request.user
+            and request.user.is_authenticated
+            and request.user.is_platform_staff
+        )
 
 
 class HasRole(permissions.BasePermission):
@@ -52,7 +56,11 @@ class HasRole(permissions.BasePermission):
         )
 
     def has_permission(self, request, view):
-        if request.user and request.user.is_authenticated and request.user.is_platform_staff:
+        if (
+            request.user
+            and request.user.is_authenticated
+            and request.user.is_platform_staff
+        ):
             return True
         return _role_of(request.user) in self.allowed_roles
 

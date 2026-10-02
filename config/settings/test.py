@@ -1,43 +1,33 @@
 """Réglages pour la suite de tests (pytest)."""
 
 from .base import *  # noqa: F403
-from .base import env
+from .base import DATABASES, NOTIFICATIONS, env
 
 DEBUG = False
 
 ALLOWED_HOSTS = ["testserver", "localhost"]
 
-# Fausse base : pytest-django cree puis detruit la base de test.
-DATABASES["default"]["TEST"] = {"NAME": env(  # noqa: F405
-    "POSTGRES_TEST_DB", default="test_madara"
-)}
+# pytest-django cree puis detruit cette base pour chaque execution.
+DATABASES["default"]["TEST"] = {"NAME": env("POSTGRES_TEST_DB", default="test_madara")}
 
-# Aucun envoi reel : tout est capture en memoire.
+# Aucun envoi reel : les e-mails sont captures en memoire.
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
-NOTIFICATIONS = {  # noqa: F405
-    **NOTIFICATIONS,  # noqa: F405
-    "WHATSAPP_PROVIDER": "console",
-}
+NOTIFICATIONS = {**NOTIFICATIONS, "WHATSAPP_PROVIDER": "console"}
 
-CELERY_TASK_ALWAYS_EAGER = True
-CELERY_TASK_EAGER_PROPAGATES = True
-
-# Les hachages de mots de passe les plus lents ecrasent la vitesse.
+# Les hachages les plus lents ecrasent la vitesse.
 PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
-STORAGES = {  # noqa: F405
+STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.InMemoryStorage"},
-    "staticfiles": {
-        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
-    },
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
 }
 
-MEDIA_ROOT = None
-
-# Unittest : pas de migrations concurrentes, on garde le temps de la logique.
+# Les taches s'executent de maniere synchrone : les assertions portent sur l'effet.
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_BROKER_URL = "memory://"
 CELERY_RESULT_BACKEND = "cache+memory://"
 
-USE_TZ = True
-TIME_ZONE = "UTC"
 LANGUAGE_CODE = "fr"
+TIME_ZONE = "UTC"
+USE_TZ = True

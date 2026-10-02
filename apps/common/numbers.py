@@ -90,9 +90,7 @@ def next_sequence(
             return f"{prefix}-{period}-{1:0{digits}d}"
 
         next_value = counter.last_value + 1
-        SequenceCounter.all_objects.filter(pk=counter.pk).update(
-            last_value=next_value
-        )
+        SequenceCounter.all_objects.filter(pk=counter.pk).update(last_value=next_value)
         return f"{prefix}-{period}-{next_value:0{digits}d}"
 
 

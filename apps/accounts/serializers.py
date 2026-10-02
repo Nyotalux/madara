@@ -143,7 +143,7 @@ class MeSerializer(UserSerializer):
     clinics = serializers.SerializerMethodField()
 
     class Meta(UserSerializer.Meta):
-        fields = UserSerializer.Meta.fields + ["current_clinic", "clinics"]
+        fields = (*UserSerializer.Meta.fields, "current_clinic", "clinics")
 
     def get_current_clinic(self, obj):
         clinic = self.context.get("clinic")
@@ -165,7 +165,14 @@ class OpeningHourSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OpeningHour
-        fields = ["id", "weekday", "weekday_display", "start_time", "end_time", "is_closed"]
+        fields = [
+            "id",
+            "weekday",
+            "weekday_display",
+            "start_time",
+            "end_time",
+            "is_closed",
+        ]
 
 
 class BlockedSlotSerializer(serializers.ModelSerializer):

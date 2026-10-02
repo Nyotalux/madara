@@ -1,0 +1,65 @@
+[project]
+name = "madara"
+version = "1.0.0"
+description = "Systeme de gestion de clinique medicale : patients, rendez-vous, dossiers, finances."
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+readme = "README.md"
+
+[tool.ruff]
+line-length = 90
+target-version = "py310"
+extend-exclude = ["*/migrations/*", ".venv"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # bugbear
+    "C4",   # comprehensions
+    "DJ",   # django
+    "RUF",
+]
+ignore = [
+    "RUF001",  # ambiguites de caracteres (les accents francais sont intentionnels)
+    "RUF002",
+    "RUF003",
+    "RUF012",  # ClassVar : deja gere par les managers Django
+    "E501",    # longueur : la ligne est verifiee par le formateur
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]
+combine-as-imports = true
+
+[tool.ruff.lint.per-file-ignores]
+"*/tests/*.py" = ["B011"]
+"apps/*/migrations/*.py" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py", "tests.py"]
+addopts = "-q --strict-markers --disable-warnings"
+testpaths = ["apps", "tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.coverage.run]
+source = ["apps", "config"]
+omit = ["*/migrations/*", "*/tests/*", "manage.py"]
+branch = true
+
+[tool.coverage.report]
+skip_covered = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]

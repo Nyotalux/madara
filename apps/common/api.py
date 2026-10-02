@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-from django.core.exceptions import PermissionDenied, ValidationError as DjangoValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError as DjangoValidationError,
+)
 from django.db import IntegrityError
 from django.http import Http404
+from django.utils.translation import gettext as _
 from rest_framework import status
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import exception_handler as drf_exception_handler
-
-from django.utils.translation import gettext as _
 
 
 class DefaultPagination(PageNumberPagination):
@@ -49,7 +51,9 @@ def madara_exception_handler(exc, context):
         exc.status_code = status.HTTP_403_FORBIDDEN
     elif isinstance(exc, IntegrityError):
         exc = APIException(
-            detail=_("Opération impossible : cet enregistrement existe déjà ou viole une contrainte.")
+            detail=_(
+                "Opération impossible : cet enregistrement existe déjà ou viole une contrainte."
+            )
         )
         exc.status_code = status.HTTP_409_CONFLICT
 
@@ -69,7 +73,9 @@ def madara_exception_handler(exc, context):
         "error": {
             "code": getattr(exc, "default_code", "error"),
             "message": message,
-            "details": detail if not (isinstance(detail, dict) and set(detail.keys()) == {"detail"}) else None,
+            "details": detail
+            if not (isinstance(detail, dict) and set(detail.keys()) == {"detail"})
+            else None,
         }
     }
     return response

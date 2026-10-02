@@ -42,6 +42,5 @@ _required = ["SECRET_KEY", "POSTGRES_PASSWORD", "REDIS_URL"]
 _missing = [key for key in _required if not env(key, default="")]
 if _missing:
     raise RuntimeError(
-        "Variables d'environnement manquantes pour la production : "
-        + ", ".join(_missing)
+        "Variables d'environnement manquantes pour la production : " + ", ".join(_missing)
     )

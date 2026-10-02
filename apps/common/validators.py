@@ -17,13 +17,9 @@ def validate_document_file(uploaded_file):
     allowed = settings.UPLOAD_ALLOWED_EXTENSIONS
 
     if extension not in allowed:
-        raise ValidationError(
-            EXTENSION_ERROR, params={"extensions": ", ".join(allowed)}
-        )
+        raise ValidationError(EXTENSION_ERROR, params={"extensions": ", ".join(allowed)})
 
     max_bytes = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
     size = getattr(uploaded_file, "size", None)
     if size is not None and size > max_bytes:
-        raise ValidationError(
-            SIZE_ERROR, params={"size": settings.MAX_UPLOAD_SIZE_MB}
-        )
+        raise ValidationError(SIZE_ERROR, params={"size": settings.MAX_UPLOAD_SIZE_MB})
