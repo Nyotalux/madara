@@ -1,7 +1,7 @@
-"""Test de fumée HTTP de bout en bout (jalon 1).
+"""Test de fumée HTTP de bout en bout (jalons 1 et 2).
 
-Vérifie la connexion web, le cloisonnement multi-cliniques et les permissions
-par rôle, en parlant réellement au serveur.
+Vérifie la connexion web, le cloisonnement multi-cliniques, les permissions par
+rôle et le parcours dossier patient (web + API), en parlant au serveur.
 
     python manage.py runserver 8765        # dans un terminal
     python scripts/smoke_test.py            # dans un autre
@@ -21,7 +21,8 @@ import urllib.parse
 import urllib.request
 
 CSRF_RE = re.compile(r'name="csrfmiddlewaretoken" value="([^"]+)"')
-LINK_RE = re.compile(r'href="(/personnel/\d+/)"')
+STAFF_LINK_RE = re.compile(r'href="(/personnel/\d+/)"')
+PATIENT_LINK_RE = re.compile(r'href="(/patients/\d+/)"')
 
 
 class Browser:
@@ -72,8 +73,9 @@ class Browser:
         payload: dict | None = None,
         token: str | None = None,
         method: str | None = None,
+        headers: dict | None = None,
     ):
-        headers = {"Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json", **(headers or {})}
         if token:
             headers["Authorization"] = f"Bearer {token}"
         data = json.dumps(payload).encode() if payload is not None else None
@@ -130,7 +132,7 @@ def run(base: str, password: str) -> int:
     )
 
     status, body = doctor.get("/personnel/")
-    links = sorted(set(LINK_RE.findall(body)))
+    links = sorted(set(STAFF_LINK_RE.findall(body)))
     report.check(
         "liste du personnel cloisonnée",
         status == 200 and len(links) >= 11,
@@ -148,6 +150,75 @@ def run(base: str, password: str) -> int:
     status, _ = doctor.get("/personnel/nouveau/")
     report.check("médecin : création de personnel interdite", status == 403, str(status))
 
+    # --- Parc dossiers patients (web) -------------------------------------
+    status, body = doctor.get("/patients/")
+    report.check(
+        "liste des patients",
+        status == 200 and "Dossiers actifs" in body and "Nouveaux ce mois" in body,
+        str(status),
+    )
+    report.check(
+        "menu Patients cliquable",
+        'href="/patients/"' in body,
+    )
+    patient_links = sorted(set(PATIENT_LINK_RE.findall(body)))
+    report.check(
+        "liste cloisonnée",
+        status == 200 and len(patient_links) >= 5,
+        f"{len(patient_links)} dossiers",
+    )
+    report.check(
+        "référence de dossier affichée",
+        bool(re.search(r"PT-\d{4}-\d{5}", body)),
+    )
+
+    if patient_links:
+        status, body = doctor.get(patient_links[0])
+        report.check(
+            "fiche patient",
+            status == 200 and "Identité" in body and "Couverture" in body,
+            patient_links[0],
+        )
+        status, _ = doctor.get(f"{patient_links[0]}modifier/")
+        report.check("édition du dossier par le médecin", status == 200, str(status))
+        status, _ = doctor.get(f"{patient_links[0]}archiver/")
+        report.check("médecin : archivage interdite", status == 403, str(status))
+
+    status, body = doctor.get("/patients/nouveau/")
+    report.check(
+        "formulaire de création (médecin)",
+        status == 200
+        and "Nouveau dossier patient" in body
+        and "Repères médicaux" in body,
+        str(status),
+    )
+    status, _, url = doctor.post(
+        "/patients/nouveau/",
+        {
+            "first_name": "Yasmine",
+            "last_name": "Idrissi",
+            "gender": "F",
+            "phone": "0612345678",
+            "city": "Casablanca",
+            "is_insured": "on",
+            "insurer": "CNSS",
+        },
+    )
+    report.check(
+        "création d'un dossier (médecin)",
+        status == 200 and re.search(r"/patients/\d+/", url or ""),
+        url or str(status),
+    )
+
+    status, body = doctor.get("/patients/?q=Idrissi")
+    report.check("recherche par nom", status == 200 and "Yasmine" in body, str(status))
+    status, body = doctor.get("/patients/?status=archived")
+    report.check("filtre des archivés", status == 200 and "PT-" in body, str(status))
+    status, body = doctor.get("/patients/statistiques/")
+    report.check("statistiques patients", status == 200, str(status))
+    status, body = doctor.get("/patients/recherche/?q=ya")
+    report.check("recherche rapide (HTMX)", status == 200, str(status))
+
     status, _ = doctor.get("/personnel/", headers={"X-Clinic": "clinique-essaouira"})
     report.check("en-tête X-Clinic hors périmètre refusé", status == 404, str(status))
 
@@ -160,6 +231,14 @@ def run(base: str, password: str) -> int:
     report.check("connexion accueil", status == 200)
     status, _ = reception.get("/personnel/nouveau/")
     report.check("accueil : création de personnel interdite", status == 403, str(status))
+    status, body = reception.get("/patients/")
+    report.check(
+        "accueil : accès aux dossiers",
+        status == 200 and "Dossiers actifs" in body,
+        str(status),
+    )
+    status, _ = reception.get("/patients/nouveau/")
+    report.check("accueil : création d'un dossier autorisée", status == 200, str(status))
 
     # --- Connexion administrateur de clinique ------------------------------
     admin = Browser(base)
@@ -173,6 +252,51 @@ def run(base: str, password: str) -> int:
     report.check("page profil", status == 200 and "Mon profil" in body)
     status, body = admin.get("/cliniques/clinique-al-amal/")
     report.check("page clinique", status == 200 and "Coordonnées" in body)
+
+    # --- Comptabilite : aucun acces aux dossiers -----------------------------
+    accountant = Browser(base)
+    status, _, _ = accountant.post(
+        "/connexion/", {"username": "comptable@clinique-al-amal.ma", "password": password}
+    )
+    report.check("connexion comptabilité", status == 200)
+    status, _ = accountant.get("/patients/")
+    report.check("comptabilité : dossiers patients interdits", status == 403, str(status))
+    if patient_links:
+        status, _ = accountant.get(patient_links[0])
+        report.check("comptabilité : fiche patient interdite", status == 403, str(status))
+
+    # --- Archivage / restauration (administrateur de clinique) -----------
+    if patient_links:
+        status, _ = admin.get(f"{patient_links[0]}archiver/")
+        report.check(
+            "administrateur : formulaire d'archivage", status == 200, str(status)
+        )
+        status, _, url = admin.post(
+            f"{patient_links[0]}archiver/", {"reason": "dossier de démonstration"}
+        )
+        report.check(
+            "administrateur : archivage du dossier",
+            status == 200 and "/patients/" in (url or ""),
+            url or str(status),
+        )
+        status, body = admin.get("/patients/?status=archived")
+        report.check(
+            "liste des dossiers archivés", status == 200 and "PT-" in body, str(status)
+        )
+        status, _, url = admin.post(f"{patient_links[0]}restaurer/", {})
+        report.check(
+            "administrateur : restauration du dossier",
+            status == 200 and url.rstrip("/").endswith(patient_links[0].rstrip("/")),
+            url or str(status),
+        )
+        status, body = admin.get(f"{patient_links[0]}fiche/")
+        report.check(
+            "fiche imprimable", status == 200 and "Fiche patient" in body, str(status)
+        )
+        status, body = admin.get(f"{patient_links[0]}resume/")
+        report.check(
+            "fragment de synthèse (HTMX)", status == 200 and "<" in body, str(status)
+        )
 
     # --- Mot de passe errone ----------------------------------------------
     bad = Browser(base)
@@ -212,6 +336,93 @@ def run(base: str, password: str) -> int:
         report.check("API annuaire du personnel", status == 200, str(status))
         status, body = anon.api("/api/v1/clinics/", token=token)
         report.check("API cliniques", status == 200, str(status))
+
+        # --- API dossiers patients -----------------------------------------
+        status, body = anon.api("/api/v1/patients/", token=token)
+        report.check("API liste des patients", status == 200, str(status))
+        patients_payload = json.loads(body) if status == 200 else {}
+        report.check(
+            "API pagination",
+            "count" in patients_payload and "results" in patients_payload,
+            f"count={patients_payload.get('count')}",
+        )
+        report.check(
+            "API liste cloisonnée",
+            patients_payload.get("count", 0) > 0
+            and all(
+                "reference" in row for row in patients_payload.get("results", [])[:1]
+            ),
+        )
+        first_id = (
+            patients_payload["results"][0]["id"]
+            if patients_payload.get("results")
+            else None
+        )
+
+        status, body = anon.api("/api/v1/patients/?q=Yasmine", token=token)
+        report.check(
+            "API recherche",
+            status == 200 and json.loads(body)["results"][0]["last_name"] == "Idrissi",
+            str(status),
+        )
+
+        status, body = anon.api(
+            "/api/v1/patients/search/?q=Yas",
+            token=token,
+        )
+        report.check(
+            "API recherche rapide",
+            status == 200 and len(json.loads(body)) >= 1,
+            str(status),
+        )
+
+        status, body = anon.api(
+            "/api/v1/patients/",
+            payload={"first_name": "Amine", "last_name": "Smoke", "phone": "0655443322"},
+            token=token,
+        )
+        report.check("API création", status == 201, str(status))
+        created = json.loads(body) if status == 201 else {}
+        report.check(
+            "API référence automatique",
+            str(created.get("reference", "")).startswith("PT-"),
+            created.get("reference", ""),
+        )
+        created_id = created.get("id")
+
+        if created_id:
+            status, body = anon.api(
+                f"/api/v1/patients/{created_id}/",
+                payload={"city": "Rabat"},
+                token=token,
+                method="PATCH",
+            )
+            report.check(
+                "API modification",
+                status == 200 and json.loads(body)["city"] == "Rabat",
+                str(status),
+            )
+
+            status, body = anon.api(
+                f"/api/v1/patients/{created_id}/",
+                token=token,
+                method="DELETE",
+            )
+            report.check("API suppression refusée", status == 405, str(status))
+
+            status, body = anon.api(
+                f"/api/v1/patients/{created_id}/archive/",
+                payload={"reason": "dossier de démonstration"},
+                token=token,
+                method="POST",
+            )
+            report.check("API archivage refusé au médecin", status == 403, str(status))
+
+        status, body = anon.api(
+            f"/api/v1/patients/{first_id}/" if first_id else "/api/v1/patients/?q=zzz",
+            token=token,
+        )
+        report.check("API détail", status == 200, str(status))
         status, body = anon.api("/api/v1/clinics/current/", token=token)
         report.check("API clinique courante", status == 200, str(status))
         status, body = anon.api(
@@ -228,6 +439,33 @@ def run(base: str, password: str) -> int:
 
     status, _ = anon.api("/api/v1/me/")
     report.check("API /me/ sans jeton refusé", status == 401, str(status))
+
+    # --- Comptabilité : API patients refusée --------------------------------
+    status, body = anon.api(
+        "/api/v1/auth/login/",
+        {"email": "comptable@clinique-al-amal.ma", "password": password},
+    )
+    accountant_token = json.loads(body).get("access") if status == 200 else None
+    if accountant_token:
+        status, _ = anon.api("/api/v1/patients/", token=accountant_token)
+        report.check("API comptabilité : patients refusés", status == 403, str(status))
+
+    # --- Cloisonnement API : en-tete X-Clinic hors perimetre ---------------
+    if token:
+        status, _ = anon.api(
+            "/api/v1/patients/",
+            token=token,
+            headers={"X-Clinic": "clinique-inconnue"},
+        )
+        report.check("API X-Clinic hors périmètre refusé", status == 404, str(status))
+        status, _ = anon.api(
+            "/api/v1/patients/",
+            token=token,
+            headers={"X-Clinic": "clinique-essaouira"},
+        )
+        report.check(
+            "API X-Clinic hors clinique autorisée refusé", status == 404, str(status)
+        )
 
     print()
     if report.failures:

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% if patient %}{% translate "Modifier le patient" %}{% else %}{% translate "Nouveau patient" %}{% endif %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>
+            {% if patient %}
+                {% translate "Modifier le dossier" %} {{ patient.display_name }}
+            {% else %}
+                {% translate "Nouveau dossier patient" %}
+            {% endif %}
+        </h1>
+        <p class="muted">
+            {% if patient %}{{ patient.reference }} · {% endif %}{{ current_clinic.name }}
+        </p>
+    </div>
+</header>
+
+<form method="post" class="form-grid" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+        <div class="alert alert--error">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <fieldset>
+        <legend>{% translate "Identité" %}</legend>
+        {% include "includes/field.html" with field=form.first_name %}
+        {% include "includes/field.html" with field=form.last_name %}
+        {% include "includes/field.html" with field=form.birth_date %}
+        {% include "includes/field.html" with field=form.gender %}
+        {% include "includes/field.html" with field=form.cin %}
+        {% include "includes/field.html" with field=form.passport %}
+        {% include "includes/field.html" with field=form.social_security %}
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Contact" %}</legend>
+        {% include "includes/field.html" with field=form.phone %}
+        {% include "includes/field.html" with field=form.phone_secondary %}
+        {% include "includes/field.html" with field=form.email %}
+        {% include "includes/field.html" with field=form.address %}
+        {% include "includes/field.html" with field=form.city %}
+        {% include "includes/field.html" with field=form.emergency_contact_name %}
+        {% include "includes/field.html" with field=form.emergency_contact_phone %}
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Couverture sociale" %}</legend>
+        {% include "includes/field.html" with field=form.is_insured %}
+        {% include "includes/field.html" with field=form.insurer %}
+        {% include "includes/field.html" with field=form.insurance_number %}
+        {% include "includes/field.html" with field=form.insurance_expiry %}
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Repères médicaux" %}</legend>
+        {% include "includes/field.html" with field=form.blood_type %}
+        {% include "includes/field.html" with field=form.height_cm %}
+        {% include "includes/field.html" with field=form.weight_kg %}
+        {% include "includes/field.html" with field=form.allergies %}
+        {% include "includes/field.html" with field=form.chronic_conditions %}
+        {% include "includes/field.html" with field=form.current_medication %}
+        {% include "includes/field.html" with field=form.is_pregnant %}
+        {% include "includes/field.html" with field=form.preferred_language %}
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Notes" %}</legend>
+        {% include "includes/field.html" with field=form.notes field_class="field--full" %}
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">
+            {% if patient %}{% translate "Enregistrer" %}{% else %}{% translate "Créer le dossier" %}{% endif %}
+        </button>
+        <a class="btn btn--ghost" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}

@@ -146,6 +146,33 @@ input:focus, select:focus, textarea:focus {
 }
 .filters { max-width: 260px; margin-bottom: 1rem; }
 
+/* --- Filtres de liste (plusieurs critères) ------------------------------ */
+
+.filters-filters { margin-bottom: 1.25rem; }
+.filters-grid {
+    display: grid; gap: 0 .75rem; margin-bottom: .75rem;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+.filters-grid .field { margin-bottom: .35rem; }
+.filters-grid label { font-size: .8rem; color: var(--c-muted); }
+
+/* --- Pagination --------------------------------------------------------- */
+
+.pagination {
+    display: flex; flex-wrap: wrap; gap: .75rem; align-items: center;
+    justify-content: space-between; margin-top: 1rem;
+}
+.pagination__summary { color: var(--c-muted); font-size: .85rem; }
+.pagination__list { display: flex; gap: .35rem; list-style: none; margin: 0; padding: 0; }
+.pagination__list a, .pagination__list span {
+    display: inline-block; padding: .3rem .6rem; border-radius: 8px;
+    border: 1px solid var(--c-border); text-decoration: none; color: var(--c-text);
+}
+.pagination__list .is-current { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; }
+.muted.small { font-size: .82rem; }
+
 .form-actions { display: flex; gap: .5rem; }
 
 /* --- Boutons ------------------------------------------------------------ */
@@ -220,3 +247,71 @@ input:focus, select:focus, textarea:focus {
     body { background: #fff; }
     .card { box-shadow: none; border: 0; }
 }
+/* --- Agenda (jalon 3) ---------------------------------------------------- */
+
+.agenda-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; margin: 1rem 0;
+}
+.agenda-nav__current { display: flex; align-items: center; gap: .5rem; }
+
+.agenda-stats {
+    display: grid; gap: .75rem; margin-top: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+.stat { text-align: center; }
+.stat__value { font-size: 1.5rem; font-weight: 600; margin: 0; }
+.stat__label { color: var(--c-muted); font-size: .8rem; margin: 0; }
+
+.badge {
+    display: inline-block; padding: .1rem .5rem; border-radius: 999px;
+    font-size: .75rem; border: 1px solid var(--c-border); white-space: nowrap;
+}
+.badge--pending, .badge--confirmed { background: #eef4ff; border-color: #c6dbff; color: #1c3f94; }
+.badge--arrived { background: #fff6e0; border-color: #ffe0a3; color: #8a5a00; }
+.badge--in-progress { background: #e6f7f1; border-color: #a8e3cd; color: #0d6b4f; }
+.badge--done { background: #eef1f4; border-color: #d5dbe1; color: #46535f; }
+.badge--cancelled, .badge--no-show { background: #fdecec; border-color: #f5c2c2; color: #96231f; }
+
+.table__actions { text-align: right; white-space: nowrap; }
+.btn--small { padding: .2rem .5rem; font-size: .8rem; }
+
+.quick-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline__item {
+    position: relative; padding: .35rem 0 .35rem 1.2rem;
+    color: var(--c-muted); font-size: .9rem;
+}
+.timeline__item::before {
+    content: ""; position: absolute; left: .25rem; top: .85rem;
+    width: .45rem; height: .45rem; border-radius: 50%;
+    background: var(--c-border);
+}
+.timeline__item--past { color: var(--c-text); }
+.timeline__item--past::before { background: var(--c-primary); }
+.timeline__item--current { font-weight: 600; color: var(--c-text); }
+.timeline__item--current::before { background: var(--c-primary); box-shadow: 0 0 0 3px rgba(13, 110, 253, .18); }
+
+.week { display: grid; gap: .5rem; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.week__col {
+    background: var(--c-surface); border: 1px solid var(--c-border);
+    border-radius: var(--c-radius); padding: .5rem; min-height: 8rem;
+}
+.week__col--today { border-color: var(--c-primary); box-shadow: 0 0 0 2px rgba(13, 110, 253, .12); }
+.week__col header {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: .8rem; margin-bottom: .4rem;
+}
+.week__item {
+    display: block; padding: .3rem .4rem; margin-bottom: .25rem;
+    border-left: 3px solid var(--c-primary); border-radius: 4px;
+    background: rgba(13, 110, 253, .06); text-decoration: none; color: var(--c-text);
+    font-size: .78rem;
+}
+.week__item:hover { background: rgba(13, 110, 253, .14); }
+.week__time { display: block; font-weight: 600; }
+.week__patient { display: block; }
+.week__empty { color: var(--c-muted); text-align: center; }
+
+.details summary { cursor: pointer; color: var(--c-muted); font-size: .9rem; }

@@ -85,6 +85,9 @@ class ClinicViewSet(ClinicContextMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # Pendant la génération du schéma, la requête est factice.
+        if getattr(self, "swagger_fake_view", False):
+            return Clinic.objects.none()
         user = self.request.user
         if user.is_platform_staff:
             return Clinic.objects.all()
@@ -106,6 +109,8 @@ class MembershipViewSet(ClinicContextMixin, viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsActiveMember]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Membership.objects.none()
         return (
             Membership.objects.filter(user=self.request.user)
             .select_related("clinic", "user", "practitioner_profile")

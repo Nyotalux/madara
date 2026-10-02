@@ -1,0 +1,48 @@
+{% load i18n %}
+{# Journée : liste horodée des rendez-vous filtrés. #}
+<section class="card">
+    <div class="card__header">
+        <h2>{{ day|date:"l d F Y"|title }}</h2>
+        <span class="muted">
+            {% blocktranslate count counter=appointments|length %}1 rendez-vous{% plural %}{{ counter }} rendez-vous{% endblocktranslate %}
+            {% if selected_practitioner %} — {{ selected_practitioner.user.full_name }}{% endif %}
+        </span>
+    </div>
+
+    {% if appointments %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>{% translate "Heure" %}</th>
+                    <th>{% translate "Patient" %}</th>
+                    <th>{% translate "Praticien" %}</th>
+                    <th>{% translate "Type" %}</th>
+                    <th>{% translate "Statut" %}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in appointments %}
+                    <tr>
+                        <td class="mono">{{ appointment.display_time }}</td>
+                        <td>
+                            <a href="{% url 'web:appointment-detail' appointment.pk %}">{{ appointment.patient.display_name }}</a>
+                            <div class="muted small">{{ appointment.patient.display_phone|default:"—" }}</div>
+                        </td>
+                        <td>{{ appointment.practitioner_name }}</td>
+                        <td>{{ appointment.kind_label }}</td>
+                        <td>{% include "appointments/_badge.html" with appointment=appointment %}</td>
+                        <td class="table__actions">
+                            <a class="btn btn--small" href="{% url 'web:appointment-detail' appointment.pk %}">{% translate "Ouvrir" %}</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty">
+            {% blocktranslate %}Aucun rendez-vous sur cette journée.{% endblocktranslate %}
+            <a href="{% url 'web:appointment-create' %}?date={{ day|date:'Y-m-d' }}">{% translate "Prendre un rendez-vous" %}</a>
+        </p>
+    {% endif %}
+</section>

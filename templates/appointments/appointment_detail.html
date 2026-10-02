@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ appointment.reference }} — {{ app_name }}{% endblock %}
+{% block page_title %}Rendez-vous {{ appointment.reference }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ appointment.patient.display_name }}</h1>
+        <p class="muted">
+            {{ appointment.display_date }} — {{ appointment.display_time }}
+            ({{ appointment.duration_minutes }} min) —
+            {% include "appointments/_badge.html" with appointment=appointment %}
+        </p>
+    </div>
+    <div class="page-header__actions">
+        {% if can_edit %}
+            <a class="btn" href="{% url 'web:appointment-edit' appointment.pk %}">{% translate "Déplacer" %}</a>
+        {% endif %}
+        {% if can_manage %}
+            <a class="btn" href="{% url 'web:appointment-status' appointment.pk %}">{% translate "Changer le statut" %}</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div>
+        <section class="card">
+            <div class="card__header">
+                <h2>{% translate "Patient" %}</h2>
+                <a href="{% url 'web:patient-detail' appointment.patient.pk %}">{% translate "Ouvrir le dossier" %}</a>
+            </div>
+            <dl class="list-dl">
+                <dt>{% translate "Référence dossier" %}</dt>
+                <dd class="mono">{{ appointment.patient.reference }}</dd>
+                <dt>{% translate "Téléphone" %}</dt>
+                <dd>{{ appointment.patient.display_phone|default:"—" }}</dd>
+                <dt>{% translate "Age" %}</dt>
+                <dd>{{ appointment.patient.age_label }}</dd>
+                <dt>{% translate "Couverture" %}</dt>
+                <dd>
+                    {% if appointment.patient.is_insured %}
+                        {{ appointment.patient.insurer|default:"—" }}
+                        {% if appointment.patient.insurance_is_expired %}
+                            <span class="badge badge--no-show">{% translate "périmée" %}</span>
+                        {% endif %}
+                    {% else %}
+                        {% translate "Non assuré" %}
+                    {% endif %}
+                </dd>
+            </dl>
+        </section>
+
+        <section class="card">
+            <div class="card__header"><h2>{% translate "Créneau et motif" %}</h2></div>
+            <dl class="list-dl">
+                <dt>{% translate "Praticien" %}</dt>
+                <dd>
+                    {{ appointment.practitioner_name }}
+                    {% if appointment.practitioner.practitioner_profile.specialty %}
+                        <span class="muted">— {{ appointment.practitioner.practitioner_profile.specialty.name }}</span>
+                    {% endif %}
+                </dd>
+                <dt>{% translate "Type" %}</dt>
+                <dd>{{ appointment.kind_label }}</dd>
+                <dt>{% translate "Motif" %}</dt>
+                <dd>{{ appointment.reason|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Notes internes" %}</dt>
+                <dd>{{ appointment.notes|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Créé le" %}</dt>
+                <dd>{{ appointment.created_at|date:"d/m/Y H:i" }}{% if appointment.created_by %} — {{ appointment.created_by.full_name }}{% endif %}</dd>
+            </dl>
+        </section>
+
+        {% if cancellation_log %}
+            <section class="card">
+                <div class="card__header"><h2>{% translate "Historique d'annulation" %}</h2></div>
+                <ul class="list">
+                    {% for entry in cancellation_log %}
+                        <li class="list__item">
+                            <span>{{ entry.created_at|date:"d/m/Y H:i" }}</span>
+                            <span>{{ entry.reason|default:"—" }}</span>
+                            <span class="muted">{% if entry.cancelled_by %}{{ entry.cancelled_by.full_name }}{% endif %}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endif %}
+    </div>
+
+    <div>
+        <section class="card">
+            <div class="card__header"><h2>{% translate "Parcours du rendez-vous" %}</h2></div>
+            <ol class="timeline">
+                {% for step in timeline %}
+                    <li class="timeline__item{% if step.is_current %} timeline__item--current{% endif %}{% if step.is_past %} timeline__item--past{% endif %}">
+                        {{ step.label }}
+                    </li>
+                {% endfor %}
+            </ol>
+            {% if appointment.is_cancelled or appointment.status == "NO_SHOW" %}
+                <p class="muted small">
+                    {% if appointment.cancellation_reason %}{{ appointment.cancellation_reason }}{% endif %}
+                    {% if appointment.cancelled_at %}— {% translate "annulé le" %} {{ appointment.cancelled_at|date:"d/m/Y H:i" }}{% endif %}
+                </p>
+            {% endif %}
+            {% if can_manage and not appointment.is_past %}
+                <div class="quick-actions">
+                    {% if appointment.status == "CONFIRMED" or appointment.status == "PENDING" %}
+                        <form method="post" action="{% url 'web:appointment-quick-status' appointment.pk 'ARRIVED' %}">
+                            {% csrf_token %}
+                            <button class="btn btn--small" type="submit">{% translate "Marquer arrivé" %}</button>
+                        </form>
+                    {% endif %}
+                    {% if appointment.status == "ARRIVED" %}
+                        <form method="post" action="{% url 'web:appointment-quick-status' appointment.pk 'IN_PROGRESS' %}">
+                            {% csrf_token %}
+                            <button class="btn btn--small" type="submit">{% translate "Débuter" %}</button>
+                        </form>
+                    {% endif %}
+                    {% if appointment.status == "IN_PROGRESS" %}
+                        <form method="post" action="{% url 'web:appointment-quick-status' appointment.pk 'DONE' %}">
+                            {% csrf_token %}
+                            <button class="btn btn--small" type="submit">{% translate "Terminer" %}</button>
+                        </form>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="card">
+            <div class="card__header"><h2>{% translate "Historique du patient" %}</h2></div>
+            {% if other_appointments %}
+                <ul class="list">
+                    {% for other in other_appointments %}
+                        <li class="list__item">
+                            <a href="{% url 'web:appointment-detail' other.pk %}">{{ other.display_date }} — {{ other.display_time }}</a>
+                            <span class="muted">{{ other.get_kind_display }}</span>
+                            {% include "appointments/_badge.html" with appointment=other %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty">{% translate "Aucun autre rendez-vous." %}</p>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

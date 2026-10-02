@@ -1,0 +1,3 @@
+{% load i18n %}
+{# Pastille de statut : {% include "appointments/_badge.html" with appointment=rdv %} #}
+<span class="badge {{ appointment.status_css }}">{{ appointment.get_status_display }}</span>

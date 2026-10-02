@@ -56,6 +56,10 @@ class SoftDeleteQuerySet(ClinicScopedQuerySet):
         """Suppression logique : on archive au lieu de détruire la ligne."""
         return self.update(is_active=False, deleted_at=timezone.now())
 
+    def hard_delete(self):
+        """Suppression physique : maintenance, RGPD, réinitialisation du jeu de démo."""
+        return super().delete()
+
 
 # ---------------------------------------------------------------------------
 # Managers

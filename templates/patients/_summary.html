@@ -1,0 +1,18 @@
+{% load i18n %}
+{# Fragment HTMX : synthèse courte d'un patient #}
+<div class="card">
+    <div class="card__header">
+        <h2>{{ patient.display_name }}</h2>
+        <span class="mono muted small">{{ patient.reference }}</span>
+    </div>
+    <dl class="details">
+        <dt>{% translate "Âge" %}</dt>
+        <dd>{{ patient.age_label }}</dd>
+        <dt>{% translate "Téléphone" %}</dt>
+        <dd>{{ patient.display_phone|default:"—" }}</dd>
+        <dt>{% translate "Groupe sanguin" %}</dt>
+        <dd>{{ patient.get_blood_type_display|default:"—" }}</dd>
+        <dt>{% translate "Allergies" %}</dt>
+        <dd>{{ patient.allergies|default:"—" }}</dd>
+    </dl>
+</div>

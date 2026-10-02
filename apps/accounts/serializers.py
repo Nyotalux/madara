@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from .models import (
@@ -142,16 +143,17 @@ class MeSerializer(UserSerializer):
     current_clinic = serializers.SerializerMethodField()
     clinics = serializers.SerializerMethodField()
 
-    class Meta(UserSerializer.Meta):
-        fields = (*UserSerializer.Meta.fields, "current_clinic", "clinics")
-
+    @extend_schema_field(ClinicSerializer(allow_null=True))
     def get_current_clinic(self, obj):
         clinic = self.context.get("clinic")
         return ClinicSerializer(clinic).data if clinic else None
 
+    @extend_schema_field(ClinicSerializer(many=True))
     def get_clinics(self, obj):
-        clinics = obj.clinics
-        return ClinicSerializer(clinics, many=True).data
+        return ClinicSerializer(obj.clinics, many=True).data
+
+    class Meta(UserSerializer.Meta):
+        fields = (*UserSerializer.Meta.fields, "current_clinic", "clinics")
 
 
 class SpecialtySerializer(serializers.ModelSerializer):

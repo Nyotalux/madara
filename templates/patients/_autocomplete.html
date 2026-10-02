@@ -1,0 +1,15 @@
+{% load i18n %}
+<ul class="list list--dense">
+    {% for patient in patients %}
+        <li class="list__item">
+            <a href="{% url 'web:patient-detail' patient.pk %}">{{ patient.display_name }}</a>
+            <span class="muted small">
+                <span class="mono">{{ patient.reference }}</span>
+                · {{ patient.display_phone|default:"—" }}
+                · {{ patient.age_label }}
+            </span>
+        </li>
+    {% empty %}
+        <li class="empty">{% translate "Aucune correspondance." %}</li>
+    {% endfor %}
+</ul>

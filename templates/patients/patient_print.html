@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Fiche patient" %} — {{ clinic.name }}{% endblock %}
+
+{% block content %}
+<article class="card print-sheet">
+    <header class="card__header">
+        <div>
+            <h1>{{ clinic.name }}</h1>
+            <p class="muted small">
+                {{ clinic.address }}{% if clinic.city %} — {{ clinic.city }}{% endif %}
+                {% if clinic.display_phone %} · {{ clinic.display_phone }}{% endif %}
+            </p>
+        </div>
+        <div class="muted small">
+            {% translate "Édition le" %} {{ patient.created_at|date:"d/m/Y H:i" }}<br>
+            <span class="mono">{{ patient.reference }}</span>
+        </div>
+    </header>
+
+    <h2>{{ patient.display_name }}</h2>
+    <dl class="details">
+        <dt>{% translate "Date de naissance" %}</dt><dd>{{ patient.birth_date|date:"d/m/Y"|default:"—" }}</dd>
+        <dt>{% translate "Téléphone" %}</dt><dd>{{ patient.display_phone|default:"—" }}</dd>
+        <dt>{% translate "Adresse" %}</dt><dd>{{ patient.address|default:"—" }}</dd>
+        <dt>{% translate "Groupe sanguin" %}</dt><dd>{{ patient.get_blood_type_display|default:"—" }}</dd>
+        <dt>{% translate "Allergies" %}</dt><dd>{{ patient.allergies|default:"—" }}</dd>
+        <dt>{% translate "Traitement en cours" %}</dt><dd>{{ patient.current_medication|default:"—" }}</dd>
+        <dt>{% translate "Assureur" %}</dt><dd>{{ patient.insurer|default:"—" }}</dd>
+    </dl>
+
+    <h3>{% translate "Visa du médecin" %}</h3>
+    <ul class="list">
+        {% for membership in doctors %}
+            <li class="list__item"><span>Dr {{ membership.user.full_name }}</span><span class="muted small">{{ membership.practitioner_profile.specialty.name|default:"" }}</span></li>
+        {% empty %}
+            <li class="empty">{% translate "Aucun médecin enregistré." %}</li>
+        {% endfor %}
+    </ul>
+</article>
+{% endblock %}

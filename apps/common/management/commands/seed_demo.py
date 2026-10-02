@@ -9,8 +9,9 @@ Les identifiants créés sont affichés à la fin de l'exécution.
 from __future__ import annotations
 
 import random
-from datetime import timedelta
+from datetime import date, timedelta
 
+from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -24,8 +25,15 @@ from apps.accounts.models import (
     Specialty,
     User,
 )
+from apps.appointments.models import Appointment, AppointmentCancellation
+from apps.appointments.services import (
+    available_slots,
+    book_appointment,
+    clinic_timezone,
+    local_now,
+)
 from apps.common.context import clinic_context, user_context
-from apps.common.numbers import next_sequence
+from apps.patients.models import Patient
 
 DEFAULT_PASSWORD = "Madara2026!"
 
@@ -78,6 +86,15 @@ def _slug(value: str) -> str:
     return "-".join(part for part in ascii_only.replace("'", "").split() if part)
 
 
+CITIES_STREETS = [
+    "Hassan II",
+    "Mohammed V",
+    "Ibn Rochd",
+    "Al Massira",
+    "Anfa",
+    "Zerktouni",
+]
+
 SPECIALTIES = [
     ("Médecine générale", "GEN"),
     ("Cardiologie", "CAR"),
@@ -108,6 +125,18 @@ class Command(BaseCommand):
             default=6,
             help="Nombre de médecins par clinique (défaut : 6).",
         )
+        parser.add_argument(
+            "--agenda-days",
+            type=int,
+            default=7,
+            help="Nombre de jours d'agenda remplis par clinique (défaut : 7).",
+        )
+        parser.add_argument(
+            "--patients-per-clinic",
+            type=int,
+            default=40,
+            help="Nombre de dossiers patients par clinique (défaut : 40).",
+        )
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -128,21 +157,41 @@ class Command(BaseCommand):
             staff = self._create_staff(clinic, specialties, options)
             self._create_opening_hours(clinic, staff)
             self._create_blocked_slots(clinic, staff)
+            patients = self._create_patients(
+                clinic, staff, options["patients_per_clinic"]
+            )
+            appointments = self._create_appointments(
+                clinic, staff, patients, options["agenda_days"]
+            )
             self._link_platform_admin(platform, clinic)
-            clinics.append((clinic, staff))
+            clinics.append((clinic, staff, patients, appointments))
 
         self.stdout.write(self.style.SUCCESS("\nJeu de démonstration prêt."))
         self.stdout.write(f"  Mot de passe commun : {options['password']}")
         self.stdout.write(f"  Administrateur plateforme : {platform.email}")
-        for clinic, staff in clinics:
+        for clinic, staff, patients, appointments in clinics:
             self.stdout.write(
                 f"  {clinic.name} ({clinic.slug}) : "
                 + ", ".join(f"{m.user.email} [{m.get_role_display()}]" for m in staff)
+            )
+            self.stdout.write(
+                f"      {len(patients)} dossiers patients "
+                f"(ex. {patients[0].reference} — {patients[0].display_name})"
+                if patients
+                else "      aucun dossier patient"
+            )
+            self.stdout.write(
+                f"      {len(appointments)} rendez-vous sur {options['agenda_days']} jours"
+                if appointments
+                else "      aucun rendez-vous"
             )
 
     # -- étapes ------------------------------------------------------------
 
     def _flush(self):
+        # Les rendez-vous protègent leur praticien : on les supprime d'abord.
+        AppointmentCancellation.objects.all().delete()
+        Appointment.all_objects.all().hard_delete()
         Clinic.objects.all().delete()
         User.objects.filter(is_platform_staff=True).delete()
         self.stdout.write(self.style.WARNING("Données existantes supprimées."))
@@ -343,7 +392,158 @@ class Command(BaseCommand):
                 defaults={"role": Membership.Role.ADMIN},
             )
 
-    def _preview_references(self, clinic):
-        """Vérifie que le compteur de séquences est prêt (numérotation du jalon 2)."""
+    def _create_appointments(
+        self, clinic, staff, patients, days: int
+    ) -> list[Appointment]:
+        """Agenda réaliste : créneaux libres respectés, statuts cohérents avec l'heure."""
+        if not patients or days < 1:
+            return []
+
+        created: list[Appointment] = []
+        tz = clinic_timezone(clinic)
+        now = local_now(tz)
+        practitioners = [
+            m for m in staff if m.role in {Membership.Role.DOCTOR, Membership.Role.NURSE}
+        ]
+        reception = next((m for m in staff if m.role == Membership.Role.RECEPTION), None)
+        reasons = [
+            ("Consultation de suivi", ""),
+            ("Douleurs lombaires", "Douleur lombaire basse, gêne à la marche."),
+            ("Renouvellement d'ordonnance", ""),
+            ("Bilan sanguin", "Prescription d'un bilan biologique."),
+            ("Contrôle post-opératoire", "Contrôle à 15 jours de l'intervention."),
+            ("Vaccination", ""),
+            ("Certificat médical", ""),
+        ]
+
+        with clinic_context(clinic), user_context(reception.user if reception else None):
+            for offset in range(days):
+                day = now.date() + timedelta(days=offset)
+                for practitioner in practitioners:
+                    # ``include_past`` : la journée en cours doit déjà être
+                    # remplie, sinon la démonstration ouvre sur un agenda vide.
+                    slots = available_slots(
+                        practitioner, day, clinic=clinic, tz=tz, include_past=True
+                    )
+                    # On garde environ la moitié des créneaux, pour un agenda réaliste.
+                    kept = [s for i, s in enumerate(slots) if i % 2 == 0]
+                    # Les deux derniers créneaux du jour en cours restent
+                    # « arrived » si possible : la salle d'attente n'est jamais vide.
+                    waiting = {len(kept) - 1, len(kept) - 2} if offset == 0 else set()
+                    for index, (start_at, end_at) in enumerate(kept):
+                        reason, notes = random.choice(reasons)
+                        elapsed = now - start_at
+                        if index in waiting and elapsed > timedelta(0):
+                            status = Appointment.Status.ARRIVED
+                        elif elapsed > timedelta(minutes=45):
+                            status = Appointment.Status.DONE
+                        elif elapsed > timedelta(0):
+                            status = Appointment.Status.ARRIVED
+                        else:
+                            status = random.choice(
+                                [
+                                    Appointment.Status.CONFIRMED,
+                                    Appointment.Status.CONFIRMED,
+                                    Appointment.Status.PENDING,
+                                ]
+                            )
+                        try:
+                            appointment = book_appointment(
+                                clinic=clinic,
+                                patient=random.choice(patients),
+                                practitioner=practitioner,
+                                start_at=start_at,
+                                end_at=end_at,
+                                kind=random.choice(
+                                    [
+                                        Appointment.Kind.CONSULTATION,
+                                        Appointment.Kind.CONSULTATION,
+                                        Appointment.Kind.CONTROL,
+                                    ]
+                                ),
+                                status=status,
+                                reason=reason,
+                                notes=notes,
+                                user=reception.user if reception else None,
+                            )
+                        except ValidationError:
+                            # Créneau déjà pris (hasard) : on l'ignore.
+                            continue
+                        created.append(appointment)
+
+        return created
+
+    def _create_patients(self, clinic, staff, count: int) -> list[Patient]:
+        """Dossiers patients réalistes : identité, couverture, repères médicaux."""
         with clinic_context(clinic):
-            next_sequence(clinic, "patient", "PT", digits=5)
+            if Patient.all_objects.filter(clinic=clinic).exists():
+                self.stdout.write(
+                    f"  {Patient.all_objects.filter(clinic=clinic).count()} dossiers "
+                    "patients déjà présents : génération ignorée."
+                )
+                existing = list(Patient.objects.filter(clinic=clinic).order_by("id"))
+                return existing[:count]
+
+            doctors = [m for m in staff if m.role == Membership.Role.DOCTOR]
+            cities = [clinic.city, "Casablanca", "Rabat", "Marrakech", "Fès", "Tanger"]
+            insurers = ["CNSS", "AMO", "Mutuelle Al Amane", "AXA Santé", "Sanad"]
+            created = []
+            for index in range(count):
+                first_name = FIRST_NAMES[index % len(FIRST_NAMES)]
+                last_name = LAST_NAMES[(index * 5) % len(LAST_NAMES)]
+                gender = random.choice(["F", "M"])
+                birth_year = random.randint(1945, 2020)
+                is_insured = random.random() < 0.7
+                patient = Patient(
+                    clinic=clinic,
+                    first_name=first_name,
+                    last_name=last_name,
+                    gender=gender,
+                    birth_date=date(
+                        birth_year, random.randint(1, 12), random.randint(1, 28)
+                    ),
+                    cin=f"{random.choice('AB')}{random.randint(100000, 999999)}",
+                    phone=f"+2126{random.randint(10000000, 99999999)}",
+                    email=f"{_slug(first_name)}.{_slug(last_name)}.{index}@example.ma",
+                    city=random.choice(cities),
+                    address=f"{random.randint(1, 200)} rue {random.choice(CITIES_STREETS)}",
+                    emergency_contact_name=f"{random.choice(FIRST_NAMES)} {last_name}",
+                    emergency_contact_phone=f"+2126{random.randint(10000000, 99999999)}",
+                    is_insured=is_insured,
+                    insurer=random.choice(insurers) if is_insured else "",
+                    insurance_number=f"{random.randint(100000, 999999)}"
+                    if is_insured
+                    else "",
+                    insurance_expiry=(
+                        date(2027, 1, 31)
+                        if is_insured and random.random() < 0.8
+                        else None
+                    ),
+                    blood_type=random.choice(["A+", "B+", "O+", "O-", "AB+", ""]),
+                    height_cm=random.randint(150, 195),
+                    weight_kg=round(random.uniform(45, 105), 1),
+                    allergies=random.choice(
+                        ["", "", "", "Pénicilline", "Arachides", "Poussière"]
+                    ),
+                    chronic_conditions=random.choice(
+                        ["", "", "", "Hypertension", "Diabète de type 2", "Asthme"]
+                    ),
+                    current_medication=random.choice(
+                        ["", "", "", "Amlodipine 5 mg", "Metformine 850 mg", "Salbutamol"]
+                    ),
+                    is_pregnant=gender == "F"
+                    and birth_year >= 1990
+                    and random.random() < 0.15,
+                    notes="",
+                )
+                if doctors and index % 10 == 0:
+                    patient.created_by = random.choice(doctors).user
+                patient.save()
+                created.append(patient)
+
+            # Un dossier archivé par clinique, pour illustrer le filtre.
+            if created:
+                archived = created[0]
+                archived.archive("Dossier clos (démo) — patient transféré")
+            self.stdout.write(f"  {len(created)} dossiers patients créés.")
+            return created

@@ -11,6 +11,7 @@ from faker import Faker as FakerGenerator
 from apps.accounts.models import (
     Clinic,
     Membership,
+    OpeningHour,
     PractitionerProfile,
     Specialty,
 )
@@ -104,7 +105,27 @@ def make_staff(clinic, role: str, *, first_name="Amine", last_name="Benali"):
             profession=PractitionerProfile.Profession.DOCTOR,
             specialty=SpecialtyFactory.create(),
         )
+    if role in {Membership.Role.DOCTOR, Membership.Role.NURSE}:
+        create_opening_hours(membership)
     return user, membership
+
+
+def create_opening_hours(membership, *, start="09:00", end="17:00"):
+    """Horaires hebdomadaires : une fenêtre par jour ouvré (contrainte jalon 1)."""
+    from datetime import time
+
+    hours = []
+    for weekday in range(0, 6):
+        hours.append(
+            OpeningHour.objects.create(
+                membership=membership,
+                weekday=weekday,
+                start_time=time(*(int(part) for part in start.split(":"))),
+                end_time=time(*(int(part) for part in end.split(":"))),
+                is_closed=weekday == 5 and membership.role == Membership.Role.DOCTOR,
+            )
+        )
+    return hours
 
 
 @pytest.fixture

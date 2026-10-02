@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Agenda" %} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Agenda" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Agenda des rendez-vous" %}</h1>
+        <p class="muted">
+            {{ clinic.name }} — {% translate "créneaux horaires de la clinique" %}
+        </p>
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{% url 'web:waiting-room' %}">{% translate "File d'attente" %}</a>
+        <a class="btn" href="{% url 'web:appointment-list' %}">{% translate "Historique" %}</a>
+        <a class="btn btn--primary" href="{% url 'web:appointment-create' %}">
+            {% translate "Nouveau rendez-vous" %}
+        </a>
+    </div>
+</div>
+
+<section class="card">
+    <form method="get" class="filters-filters agenda-filters">
+        <div class="filters-grid">
+            <div class="field">
+                <label for="id_practitioner">{% translate "Praticien" %}</label>
+                {% if restricted %}
+                    <input type="text" class="form-control" value="{{ request.clinic_membership.user.full_name }}" disabled>
+                    <p class="field__help">{% translate "Vous voyez uniquement votre agenda." %}</p>
+                {% else %}
+                    {{ form.practitioner }}
+                {% endif %}
+            </div>
+            <div class="field">
+                <label for="id_status">{{ form.status.label }}</label>
+                {{ form.status }}
+            </div>
+            <div class="field">
+                <label for="id_kind">{{ form.kind.label }}</label>
+                {{ form.kind }}
+            </div>
+            <div class="field">
+                <label for="id_q">{{ form.q.label }}</label>
+                {{ form.q }}
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn--primary">{% translate "Filtrer" %}</button>
+            <a class="btn" href="{% url 'web:agenda' %}">{% translate "Réinitialiser" %}</a>
+        </div>
+    </form>
+</section>
+
+<section class="agenda-nav">
+    <a class="btn" href="?vue={{ view }}&amp;date={{ prev_day|date:'Y-m-d' }}">‹ {% translate "Précédent" %}</a>
+    <div class="agenda-nav__current">
+        {% if view == "semaine" %}
+            <strong>{{ day|date:"l d F Y" }}</strong>
+        {% else %}
+            <strong>{{ day|date:"l d F Y" }}</strong>
+            {% if day == today %}
+                <span class="badge badge--confirmed">{% translate "Aujourd'hui" %}</span>
+            {% endif %}
+        {% endif %}
+    </div>
+    <a class="btn" href="?vue={{ view }}&amp;date={{ next_day|date:'Y-m-d' }}">{% translate "Suivant" %} ›</a>
+</section>
+
+{% if view == "jour" %}
+    {% include "appointments/_day.html" %}
+{% else %}
+    {% include "appointments/_week.html" %}
+{% endif %}
+
+<section class="agenda-stats">
+    {% for row in stats %}
+        <div class="stat">
+            <p class="stat__value">{{ row.count }}</p>
+            <p class="stat__label">{{ row.label }}</p>
+        </div>
+    {% endfor %}
+</section>
+
+<script>
+    // Rechargement automatique de l'agenda quand un filtre change.
+    document.querySelectorAll(".agenda-filters select, .agenda-filters input").forEach(function (el) {
+        el.addEventListener("change", function () { el.form.requestSubmit(); });
+    });
+</script>
+{% endblock %}

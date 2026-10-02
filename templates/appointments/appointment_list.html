@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Historique des rendez-vous" %} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Historique des rendez-vous" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Historique des rendez-vous" %}</h1>
+        <p class="muted">{{ start|date:"d/m/Y" }} → {{ end|date:"d/m/Y" }}</p>
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{% url 'web:agenda' %}">{% translate "Agenda" %}</a>
+        <a class="btn btn--primary" href="{% url 'web:appointment-create' %}">{% translate "Nouveau rendez-vous" %}</a>
+    </div>
+</div>
+
+<section class="card">
+    <form method="get" class="filters-filters">
+        <div class="filters-grid">
+            <div class="field">
+                <label for="id_du">{% translate "Du" %}</label>
+                <input type="date" name="du" id="id_du" class="form-control" value="{{ start|date:'Y-m-d' }}">
+            </div>
+            <div class="field">
+                <label for="id_au">{% translate "Au" %}</label>
+                <input type="date" name="au" id="id_au" class="form-control" value="{{ end|date:'Y-m-d' }}">
+            </div>
+            {% if not restricted %}
+                <div class="field">
+                    <label for="id_practitioner">{{ form.practitioner.label }}</label>
+                    {{ form.practitioner }}
+                </div>
+            {% endif %}
+            <div class="field">
+                <label for="id_status">{{ form.status.label }}</label>
+                {{ form.status }}
+            </div>
+            <div class="field">
+                <label for="id_kind">{{ form.kind.label }}</label>
+                {{ form.kind }}
+            </div>
+            <div class="field">
+                <label for="id_q">{{ form.q.label }}</label>
+                {{ form.q }}
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn--primary">{% translate "Filtrer" %}</button>
+            <a class="btn" href="{% url 'web:appointment-list' %}">{% translate "Réinitialiser" %}</a>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    {% if appointments %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>{% translate "Date" %}</th>
+                    <th>{% translate "Heure" %}</th>
+                    <th>{% translate "Patient" %}</th>
+                    <th>{% translate "Praticien" %}</th>
+                    <th>{% translate "Type" %}</th>
+                    <th>{% translate "Statut" %}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for appointment in appointments %}
+                    <tr>
+                        <td>{{ appointment.display_date }}</td>
+                        <td class="mono">{{ appointment.display_time }}</td>
+                        <td>
+                            <a href="{% url 'web:appointment-detail' appointment.pk %}">{{ appointment.patient.display_name }}</a>
+                            <div class="muted small mono">{{ appointment.reference }}</div>
+                        </td>
+                        <td>{{ appointment.practitioner_name }}</td>
+                        <td>{{ appointment.kind_label }}</td>
+                        <td>{% include "appointments/_badge.html" with appointment=appointment %}</td>
+                        <td class="table__actions">
+                            <a class="btn btn--small" href="{% url 'web:appointment-detail' appointment.pk %}">{% translate "Ouvrir" %}</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% include "includes/pagination.html" with page_obj=page_obj querystring=querystring %}
+    {% else %}
+        <p class="empty">{% translate "Aucun rendez-vous sur cette période." %}</p>
+    {% endif %}
+</section>
+{% endblock %}

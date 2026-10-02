@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Statut du rendez-vous" %} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Changer le statut" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Statut du rendez-vous" %}</h1>
+        <p class="muted">
+            {{ appointment.patient.display_name }} — {{ appointment.display_date }} {{ appointment.display_time }}
+        </p>
+    </div>
+</div>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    <p class="muted">
+        {% translate "Statut actuel" %} : {% include "appointments/_badge.html" with appointment=appointment %}
+    </p>
+
+    <fieldset>
+        <legend>{% translate "Nouveau statut" %}</legend>
+        {% include "includes/field.html" with field=form.status %}
+        {% include "includes/field.html" with field=form.reason %}
+        <p class="field__help">
+            {% translate "Le motif est obligatoire en pratique pour une annulation ; il est journalisé." %}
+        </p>
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Appliquer" %}</button>
+        <a class="btn" href="{% url 'web:appointment-detail' appointment.pk %}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}

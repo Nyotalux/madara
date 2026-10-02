@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Patients" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Patients" %}</h1>
+        <p class="muted">{{ current_clinic.name }} — {% blocktranslate count counter=result_count %}1 dossier{% plural %}{{ counter }} dossiers{% endblocktranslate %}</p>
+    </div>
+    <a class="btn btn--primary" href="{% url 'web:patient-create' %}">{% translate "Nouveau patient" %}</a>
+</header>
+
+<section class="grid grid--4">
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Dossiers actifs" %}</p>
+        <p class="card__value">{{ stats.active }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Nouveaux ce mois" %}</p>
+        <p class="card__value">{{ stats.new_this_month }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Assurés" %}</p>
+        <p class="card__value">{{ stats.insured }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Archivés" %}</p>
+        <p class="card__value">{{ stats.archived }}</p>
+    </div>
+</section>
+
+<form method="get" class="filters-filters" role="search">
+    <div class="filters-grid">
+        <p class="field field--full">
+            <label for="id_q">{% translate "Recherche" %}</label>
+            <input type="search" name="q" id="id_q" value="{{ form.q.value|default:'' }}"
+                   class="form-control" placeholder="{% translate 'Nom, téléphone, CIN, référence…' %}">
+        </p>
+        <p class="field">
+            <label for="id_gender">{% translate "Sexe" %}</label>
+            {{ form.gender }}
+        </p>
+        <p class="field">
+            <label for="id_city">{% translate "Ville" %}</label>
+            {{ form.city }}
+        </p>
+        <p class="field">
+            <label for="id_insured">{% translate "Couverture" %}</label>
+            {{ form.insured }}
+        </p>
+        <p class="field">
+            <label for="id_status">{% translate "Statut" %}</label>
+            {{ form.status }}
+        </p>
+        <p class="field">
+            <label for="id_order_by">{% translate "Tri" %}</label>
+            {{ form.order_by }}
+        </p>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Filtrer" %}</button>
+        <a class="btn btn--ghost" href="{% url 'web:patient-list' %}">{% translate "Réinitialiser" %}</a>
+    </div>
+</form>
+
+{% if patients %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>{% translate "Référence" %}</th>
+                <th>{% translate "Patient" %}</th>
+                <th>{% translate "Naissance" %}</th>
+                <th>{% translate "Contact" %}</th>
+                <th>{% translate "Couverture" %}</th>
+                <th>{% translate "Statut" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for patient in patients %}
+                <tr class="{% if not patient.is_active %}is-archived{% endif %}">
+                    <td class="mono">{{ patient.reference }}</td>
+                    <td>
+                        <a href="{% url 'web:patient-detail' patient.pk %}">{{ patient.display_name }}</a>
+                        <div class="muted small">
+                            {% if patient.gender %}{{ patient.get_gender_display }} · {% endif %}
+                            {{ patient.age_label }}
+                        </div>
+                    </td>
+                    <td>{{ patient.birth_date|date:"d/m/Y"|default:"—" }}</td>
+                    <td>
+                        {{ patient.display_phone|default:"—" }}
+                        {% if patient.city %}<div class="muted small">{{ patient.city }}</div>{% endif %}
+                    </td>
+                    <td>
+                        {% if patient.is_insured %}
+                            <span class="badge badge--ok">{{ patient.insurer|default:"Assuré" }}</span>
+                            {% if patient.insurance_is_expired %}
+                                <div class="muted small">{% translate "Adhésion expirée" %}</div>
+                            {% endif %}
+                        {% else %}
+                            <span class="muted small">{% translate "Non assuré" %}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if patient.is_active %}
+                            <span class="badge badge--muted">{% translate "Actif" %}</span>
+                        {% else %}
+                            <span class="badge badge--alert">{% translate "Archivé" %}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% include "includes/pagination.html" with page_obj=page_obj querystring=querystring %}
+{% else %}
+    <p class="empty">
+        {% if form.q.value %}
+            {% blocktranslate %}Aucun dossier ne correspond à cette recherche.{% endblocktranslate %}
+        {% else %}
+            {% translate "Aucun patient enregistré dans cette clinique." %}
+        {% endif %}
+    </p>
+{% endif %}
+{% endblock %}

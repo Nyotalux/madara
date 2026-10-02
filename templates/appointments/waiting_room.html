@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "File d'attente" %} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "File d'attente" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "File d'attente" %}</h1>
+        <p class="muted">{{ day|date:"l d F Y"|title }} — {{ clinic.name }}</p>
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{% url 'web:agenda' %}?date={{ day|date:'Y-m-d' }}">{% translate "Agenda du jour" %}</a>
+        <a class="btn btn--primary" href="{% url 'web:appointment-create' %}?date={{ day|date:'Y-m-d' }}">{% translate "Nouveau rendez-vous" %}</a>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <section class="card">
+        <div class="card__header">
+            <h2>{% translate "En consultation" %}</h2>
+            <span class="badge">{{ in_progress|length }}</span>
+        </div>
+        {% if in_progress %}
+            <ul class="list">
+                {% for appointment in in_progress %}
+                    <li class="list__item">
+                        <span class="mono">{{ appointment.display_time }}</span>
+                        <a href="{% url 'web:appointment-detail' appointment.pk %}">{{ appointment.patient.display_name }}</a>
+                        <span class="muted">{{ appointment.practitioner_name }}</span>
+                        <form method="post" action="{% url 'web:appointment-quick-status' appointment.pk 'DONE' %}">
+                            {% csrf_token %}
+                            <button class="btn btn--small" type="submit">{% translate "Terminer" %}</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="empty">{% translate "Aucune consultation en cours." %}</p>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <div class="card__header">
+            <h2>{% translate "Patients arrivés" %}</h2>
+            <span class="badge">{{ waiting|length }}</span>
+        </div>
+        {% if waiting %}
+            <ul class="list">
+                {% for appointment in waiting %}
+                    <li class="list__item">
+                        <span class="mono">{{ appointment.display_time }}</span>
+                        <a href="{% url 'web:appointment-detail' appointment.pk %}">{{ appointment.patient.display_name }}</a>
+                        <span class="muted">{{ appointment.practitioner_name }}</span>
+                        <form method="post" action="{% url 'web:appointment-quick-status' appointment.pk 'IN_PROGRESS' %}">
+                            {% csrf_token %}
+                            <button class="btn btn--small" type="submit">{% translate "Débuter" %}</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="empty">{% translate "Salle d'attente vide." %}</p>
+        {% endif %}
+    </section>
+
+    <section class="card">
+        <div class="card__header">
+            <h2>{% translate "À venir" %}</h2>
+            <span class="badge">{{ expected|length }}</span>
+        </div>
+        {% if expected %}
+            <ul class="list">
+                {% for appointment in expected %}
+                    <li class="list__item">
+                        <span class="mono">{{ appointment.display_time }}</span>
+                        <a href="{% url 'web:appointment-detail' appointment.pk %}">{{ appointment.patient.display_name }}</a>
+                        <span class="muted">{{ appointment.practitioner_name }}</span>
+                        <form method="post" action="{% url 'web:appointment-quick-status' appointment.pk 'ARRIVED' %}">
+                            {% csrf_token %}
+                            <button class="btn btn--small" type="submit">{% translate "Arrivé" %}</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="empty">{% translate "Aucun rendez-vous attendu." %}</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

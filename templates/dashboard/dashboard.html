@@ -55,6 +55,32 @@
     {% endif %}
 </section>
 
+<section class="card">
+    <header class="card__header">
+        <h2>{% translate "Agenda du jour" %}</h2>
+        <a class="btn btn--ghost btn--sm" href="{% url 'web:agenda' %}">{% translate "Ouvrir l'agenda" %}</a>
+    </header>
+
+    {% if today_appointments %}
+        <p class="muted small">
+            {{ today_count }} {% translate "rendez-vous" %}
+            {% if waiting_count %} — {{ waiting_count }} {% translate "en salle d'attente" %}{% endif %}
+        </p>
+        <ul class="list">
+            {% for appointment in today_appointments %}
+                <li class="list__item">
+                    <a href="{% url 'web:appointment-detail' appointment.pk %}">{{ appointment.display_time }}</a>
+                    <span class="muted">{{ appointment.patient.display_name }}</span>
+                    <span class="muted small">{{ appointment.practitioner_name }}</span>
+                    {% include "appointments/_badge.html" with appointment=appointment %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty">{% translate "Aucun rendez-vous aujourd'hui." %}</p>
+    {% endif %}
+</section>
+
 <section class="card card--muted">
     <h2>{% translate "Jalons à venir" %}</h2>
     <ol class="milestones">

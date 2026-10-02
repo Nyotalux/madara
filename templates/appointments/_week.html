@@ -1,0 +1,22 @@
+{% load i18n %}
+{# Semaine : sept colonnes, du lundi au dimanche. #}
+<section class="week">
+    {% for entry in days %}
+        <div class="week__col{% if entry.date == today %} week__col--today{% endif %}">
+            <header>
+                <a href="{% url 'web:agenda' %}?date={{ entry.date|date:'Y-m-d' }}">{{ entry.label }}</a>
+                <span class="badge">{{ entry.count }}</span>
+            </header>
+            {% for appointment in entry.appointments %}
+                <a class="week__item"
+                   href="{% url 'web:appointment-detail' appointment.pk %}">
+                    <span class="week__time">{{ appointment.start_at|time:"H:i" }}</span>
+                    <span class="week__patient">{{ appointment.patient.display_name }}</span>
+                    {% include "appointments/_badge.html" with appointment=appointment %}
+                </a>
+            {% empty %}
+                <p class="week__empty">—</p>
+            {% endfor %}
+        </div>
+    {% endfor %}
+</section>

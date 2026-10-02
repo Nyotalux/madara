@@ -24,8 +24,12 @@
             <a href="{% url 'web:staff-list' %}" class="{% if 'staff' in request.resolver_match.url_name %}is-active{% endif %}">
                 {% translate "Personnel" %}
             </a>
-            <span class="nav-placeholder" title="{% translate 'Disponible au jalon 2' %}">{% translate "Patients" %}</span>
-            <span class="nav-placeholder" title="{% translate 'Disponible au jalon 2' %}">{% translate "Rendez-vous" %}</span>
+            <a href="{% url 'web:patient-list' %}" class="{% if 'patient' in request.resolver_match.url_name %}is-active{% endif %}">
+                {% translate "Patients" %}
+            </a>
+            <a href="{% url 'web:agenda' %}" class="{% if 'agenda' in request.resolver_match.url_name or 'appointment' in request.resolver_match.url_name or 'waiting' in request.resolver_match.url_name %}is-active{% endif %}">
+                {% translate "Rendez-vous" %}
+            </a>
             <span class="nav-placeholder" title="{% translate 'Disponible au jalon 4' %}">{% translate "Consultations" %}</span>
             <span class="nav-placeholder" title="{% translate 'Disponible au jalon 5' %}">{% translate "Facturation" %}</span>
         {% endif %}

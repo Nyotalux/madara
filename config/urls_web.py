@@ -16,9 +16,10 @@ urlpatterns = [
     path("", include("apps.accounts.urls_web")),
     # --- Tableau de bord (jalon 1)
     path("", include("apps.dashboard.urls_web")),
-    # --- Jalons suivants : décommenter au fur et à mesure
-    # path("", include("apps.patients.urls_web")),
-    # path("", include("apps.appointments.urls_web")),
+    # --- Dossiers patients (jalon 2)
+    path("", include("apps.patients.urls_web")),
+    # --- Agenda et rendez-vous (jalon 3)
+    path("", include("apps.appointments.urls_web")),
     # path("", include("apps.consultations.urls_web")),
     # path("", include("apps.medical_records.urls_web")),
     # path("", include("apps.billing.urls_web")),

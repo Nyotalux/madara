@@ -1,0 +1,26 @@
+{% load i18n %}
+{# Pagination : attend page_obj et, en option, querystring ("&a=b"). #}
+{% if page_obj.paginator.num_pages > 1 %}
+<nav class="pagination" aria-label="{% translate 'Pagination' %}">
+    <span class="pagination__summary">
+        {% blocktranslate with number=page_obj.number total=page_obj.paginator.num_pages %}Page {{ number }} sur {{ total }}{% endblocktranslate %}
+    </span>
+    <ul class="pagination__list">
+        {% if page_obj.has_previous %}
+            <li><a href="?page={{ page_obj.previous_page_number }}{{ querystring }}">{% translate "Précédent" %}</a></li>
+        {% endif %}
+        {% for number in page_obj.paginator.page_range %}
+            {% if number == page_obj.number %}
+                <li><span class="is-current" aria-current="page">{{ number }}</span></li>
+            {% elif number <= 3 or number > page_obj.paginator.num_pages|add:"-3" or number >= page_obj.number|add:"-1" and number <= page_obj.number|add:"1" %}
+                <li><a href="?page={{ number }}{{ querystring }}">{{ number }}</a></li>
+            {% elif number == 4 and page_obj.number > 5 %}
+                <li><span aria-hidden="true">…</span></li>
+            {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+            <li><a href="?page={{ page_obj.next_page_number }}{{ querystring }}">{% translate "Suivant" %}</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}

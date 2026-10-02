@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ patient.display_name }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{{ patient.display_name }}</h1>
+        <p class="muted">
+            <span class="mono">{{ patient.reference }}</span>
+            · {{ patient.age_label }}
+            {% if patient.gender %}· {{ patient.get_gender_display }}{% endif %}
+            {% if not patient.is_active %}<span class="badge badge--alert">{% translate "Archivé" %}</span>{% endif %}
+        </p>
+    </div>
+    <div class="form-actions">
+        <a class="btn btn--primary" href="{% url 'web:patient-edit' patient.pk %}">{% translate "Modifier" %}</a>
+        <a class="btn btn--ghost" href="{% url 'web:patient-print' patient.pk %}" target="_blank" rel="noopener">{% translate "Fiche imprimable" %}</a>
+        <a class="btn btn--ghost" href="{% url 'web:patient-list' %}">{% translate "Retour à la liste" %}</a>
+    </div>
+</header>
+
+{% if patient.has_medical_flags %}
+    <div class="alert alert--error">
+        <strong>{% translate "Point d'attention" %}</strong>
+        {% if patient.allergies %}<div>{% translate "Allergies" %} : {{ patient.allergies }}</div>{% endif %}
+        {% if patient.current_medication %}<div>{% translate "Traitement" %} : {{ patient.current_medication }}</div>{% endif %}
+    </div>
+{% endif %}
+
+<div class="grid grid--2">
+    <section class="card">
+        <div class="card__header">
+            <h2>{% translate "Identité" %}</h2>
+        </div>
+        <dl class="details">
+            <dt>{% translate "Date de naissance" %}</dt>
+            <dd>{{ patient.birth_date|date:"d/m/Y"|default:"—" }}</dd>
+            <dt>{% translate "CIN" %}</dt>
+            <dd class="mono">{{ patient.cin|default:"—" }}</dd>
+            <dt>{% translate "Passeport" %}</dt>
+            <dd class="mono">{{ patient.passport|default:"—" }}</dd>
+            <dt>{% translate "N° sécurité sociale" %}</dt>
+            <dd class="mono">{{ patient.social_security|default:"—" }}</dd>
+            <dt>{% translate "Groupe sanguin" %}</dt>
+            <dd>{{ patient.get_blood_type_display|default:"—" }}</dd>
+            <dt>{% translate "Mensurations" %}</dt>
+            <dd>
+                {% if patient.height_cm %}{{ patient.height_cm }} cm{% endif %}
+                {% if patient.height_cm and patient.weight_kg %} · {% endif %}
+                {% if patient.weight_kg %}{{ patient.weight_kg }} kg{% endif %}
+                {% if not patient.height_cm and not patient.weight_kg %}—{% endif %}
+            </dd>
+        </dl>
+    </section>
+
+    <section class="card">
+        <div class="card__header">
+            <h2>{% translate "Contact" %}</h2>
+        </div>
+        <dl class="details">
+            <dt>{% translate "Téléphone" %}</dt>
+            <dd>{{ patient.display_phone|default:"—" }}</dd>
+            <dt>{% translate "Téléphone 2" %}</dt>
+            <dd>{{ patient.phone_secondary|default:"—" }}</dd>
+            <dt>{% translate "E-mail" %}</dt>
+            <dd>{{ patient.email|default:"—" }}</dd>
+            <dt>{% translate "Adresse" %}</dt>
+            <dd>{{ patient.address|default:"—" }}</dd>
+            <dt>{% translate "Ville" %}</dt>
+            <dd>{{ patient.city|default:"—" }}</dd>
+            <dt>{% translate "Contact d'urgence" %}</dt>
+            <dd>
+                {{ patient.emergency_contact_name|default:"—" }}
+                {% if patient.emergency_contact_phone %}<div class="muted small">{{ patient.display_emergency_phone }}</div>{% endif %}
+            </dd>
+        </dl>
+    </section>
+
+    <section class="card">
+        <div class="card__header">
+            <h2>{% translate "Couverture sociale" %}</h2>
+        </div>
+        <dl class="details">
+            <dt>{% translate "Assuré" %}</dt>
+            <dd>
+                {% if patient.is_insured %}
+                    <span class="badge badge--ok">{% translate "Oui" %}</span>
+                {% else %}
+                    <span class="badge badge--muted">{% translate "Non" %}</span>
+                {% endif %}
+            </dd>
+            <dt>{% translate "Assureur" %}</dt>
+            <dd>{{ patient.insurer|default:"—" }}</dd>
+            <dt>{% translate "N° d'adhésion" %}</dt>
+            <dd class="mono">{{ patient.insurance_number|default:"—" }}</dd>
+            <dt>{% translate "Fin de validité" %}</dt>
+            <dd>
+                {{ patient.insurance_expiry|date:"d/m/Y"|default:"—" }}
+                {% if patient.insurance_is_expired %}
+                    <span class="badge badge--alert">{% translate "Expirée" %}</span>
+                {% endif %}
+            </dd>
+        </dl>
+    </section>
+
+    <section class="card">
+        <div class="card__header">
+            <h2>{% translate "Antécédents déclarés" %}</h2>
+        </div>
+        <dl class="details">
+            <dt>{% translate "Allergies" %}</dt>
+            <dd>{{ patient.allergies|default:"—" }}</dd>
+            <dt>{% translate "Maladies chroniques" %}</dt>
+            <dd>{{ patient.chronic_conditions|default:"—" }}</dd>
+            <dt>{% translate "Traitement en cours" %}</dt>
+            <dd>{{ patient.current_medication|default:"—" }}</dd>
+            <dt>{% translate "Grossesse" %}</dt>
+            <dd>{% if patient.is_pregnant %}{% translate "Oui" %}{% else %}{% translate "Non" %}{% endif %}</dd>
+            <dt>{% translate "Langue" %}</dt>
+            <dd>{{ patient.get_preferred_language_display }}</dd>
+            <dt>{% translate "Notes" %}</dt>
+            <dd>{{ patient.notes|default:"—" }}</dd>
+        </dl>
+    </section>
+</div>
+
+<section class="card">
+    <div class="card__header">
+        <h2>{% translate "Prochains rendez-vous" %}</h2>
+        <a class="btn btn--small" href="{% url 'web:appointment-create' %}?patient={{ patient.pk }}">{% translate "Prendre rendez-vous" %}</a>
+    </div>
+    {% if upcoming_appointments %}
+        <ul class="list">
+            {% for appointment in upcoming_appointments %}
+                <li class="list__item">
+                    <a href="{% url 'web:appointment-detail' appointment.pk %}">{{ appointment.start_at|date:"d/m/Y H:i" }}</a>
+                    <span class="muted">{{ appointment.practitioner_name }}</span>
+                    <span class="muted small">{{ appointment.get_kind_display }}</span>
+                    {% include "appointments/_badge.html" with appointment=appointment %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty">{% translate "Aucun rendez-vous à venir." %}</p>
+    {% endif %}
+
+    {% if past_appointments %}
+        <details class="details">
+            <summary>{% translate "Rendez-vous passés" %} ({{ past_appointments|length }})</summary>
+            <ul class="list">
+                {% for appointment in past_appointments %}
+                    <li class="list__item">
+                        <a href="{% url 'web:appointment-detail' appointment.pk %}">{{ appointment.start_at|date:"d/m/Y H:i" }}</a>
+                        <span class="muted">{{ appointment.practitioner_name }}</span>
+                        {% include "appointments/_badge.html" with appointment=appointment %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </details>
+    {% endif %}
+</section>
+
+<section class="card">
+    <div class="card__header">
+        <h2>{% translate "Suivi du dossier" %}</h2>
+    </div>
+    <dl class="details">
+        <dt>{% translate "Créé le" %}</dt>
+        <dd>{{ patient.created_at|date:"d/m/Y H:i" }}{% if patient.created_by %} — {{ patient.created_by.full_name }}{% endif %}</dd>
+        <dt>{% translate "Modifié le" %}</dt>
+        <dd>{{ patient.updated_at|date:"d/m/Y H:i" }}</dd>
+        {% if not patient.is_active %}
+            <dt>{% translate "Archivé le" %}</dt>
+            <dd>{{ patient.deleted_at|date:"d/m/Y H:i" }}{% if patient.deletion_reason %} — {{ patient.deletion_reason }}{% endif %}</dd>
+        {% endif %}
+    </dl>
+
+    <div class="form-actions">
+        {% if can_archive and patient.is_active %}
+            <a class="btn btn--ghost" href="{% url 'web:patient-archive' patient.pk %}">{% translate "Archiver le dossier" %}</a>
+        {% elif can_archive %}
+            <form method="post" action="{% url 'web:patient-restore' patient.pk %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--ghost">{% translate "Restaurer le dossier" %}</button>
+            </form>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

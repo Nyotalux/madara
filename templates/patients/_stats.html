@@ -1,0 +1,15 @@
+{% load i18n %}
+{# Fragment HTMX : répartition géographique #}
+<div class="card">
+    <div class="card__header">
+        <h2>{% translate "Patients par ville" %}</h2>
+        <span class="muted small">{{ total }} {% translate "dossiers" %}</span>
+    </div>
+    <ul class="list list--dense">
+        {% for row in by_city %}
+            <li class="list__item"><span>{{ row.city }}</span><span>{{ row.total }}</span></li>
+        {% empty %}
+            <li class="empty">{% translate "Aucune ville renseignée." %}</li>
+        {% endfor %}
+    </ul>
+</div>

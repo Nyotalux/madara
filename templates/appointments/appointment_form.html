@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% if appointment %}{% translate "Modifier le rendez-vous" %}{% else %}{% translate "Nouveau rendez-vous" %}{% endif %} — {{ app_name }}
+{% endblock %}
+{% block page_title %}{% if appointment %}{% translate "Modifier le rendez-vous" %}{% else %}{% translate "Nouveau rendez-vous" %}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>
+            {% if appointment %}
+                {% translate "Rendez-vous" %} {{ appointment.reference }}
+            {% else %}
+                {% translate "Nouveau rendez-vous" %}
+            {% endif %}
+        </h1>
+        {% if appointment %}
+            <p class="muted">
+                {{ appointment.patient.display_name }} — {{ appointment.display_date }} {{ appointment.display_time }}
+            </p>
+        {% else %}
+            <p class="muted">{% translate "Le créneau est proposé parmi les disponibilités du praticien." %}</p>
+        {% endif %}
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</div>
+
+{% if form.non_field_errors %}
+    <div class="alert alert--error">
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+{% endif %}
+
+<form method="post" class="form-card" id="appointment-form"
+      hx-get="{% url 'web:appointment-slots' %}"
+      hx-trigger="change from:#id_practitioner, change from:#id_day"
+      hx-target="#slot-field"
+      hx-swap="outerHTML"
+      hx-include="this"
+      {% if appointment %}hx-vals='{"appointment": "{{ appointment.pk }}"}'{% endif %}>
+    {% csrf_token %}
+
+    <fieldset>
+        <legend>{% translate "Patient et praticien" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.patient %}
+            {% if locked_practitioner %}
+                {# Un praticien ne réserve que pour lui-même : champ figé. #}
+                <input type="hidden" name="practitioner" value="{{ locked_practitioner.pk }}">
+                <div class="field">
+                    <label for="practitioner-readonly">{% translate "Praticien" %}</label>
+                    <p id="practitioner-readonly" class="form-control-static">
+                        {{ locked_practitioner.user.full_name|default:locked_practitioner.get_role_display }}
+                    </p>
+                </div>
+            {% else %}
+                {% include "includes/field.html" with field=form.practitioner %}
+            {% endif %}
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Créneau" %}</legend>
+        <div class="form-grid form-grid--3">
+            {% include "includes/field.html" with field=form.day %}
+            {# Rechargé par HTMX dès que le praticien ou la date change. #}
+            <div class="field" id="slot-field">
+                <label for="{{ form.slot.id_for_label }}">{{ form.slot.label }}</label>
+                <select name="slot" id="{{ form.slot.id_for_label }}" class="form-control">
+                    {% if form.slot.choices %}
+                        <option value="">{% translate "— Premier créneau libre —" %}</option>
+                        {% for value, label in form.slot.choices %}
+                            <option value="{{ value }}"{% if form.slot.value|stringformat:"s" == value %} selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="">{% translate "Choisissez d'abord un praticien et une date" %}</option>
+                    {% endif %}
+                </select>
+                <p class="field__help">{{ form.slot.help_text }}</p>
+                {% for error in form.slot.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+            </div>
+            <div class="field">
+                <label for="{{ form.kind.id_for_label }}">{{ form.kind.label }}</label>
+                {{ form.kind }}
+            </div>
+            <div class="field">
+                <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+                {{ form.status }}
+            </div>
+            {% include "includes/field.html" with field=form.reason %}
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Notes internes" %}</legend>
+        {% include "includes/field.html" with field=form.notes %}
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">
+            {% if appointment %}{% translate "Enregistrer" %}{% else %}{% translate "Réserver le créneau" %}{% endif %}
+        </button>
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}

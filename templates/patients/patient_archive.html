@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Archiver le dossier" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Archiver le dossier" %}</h1>
+        <p class="muted">{{ patient.display_name }} · <span class="mono">{{ patient.reference }}</span></p>
+    </div>
+</header>
+
+<div class="alert alert--error">
+    {% translate "Le dossier ne sera pas supprimé : il restera consultable par les administrateurs et exclu des listes par défaut." %}
+</div>
+
+<form method="post" class="form-grid">
+    {% csrf_token %}
+    {% include "includes/field.html" with field=form.reason %}
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Archiver" %}</button>
+        <a class="btn btn--ghost" href="{% url 'web:patient-detail' patient.pk %}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}

@@ -22,6 +22,8 @@ urlpatterns = [
     # --- API REST (applications mobiles)
     path("api/v1/auth/", include("apps.accounts.urls_auth")),
     path("api/v1/", include("apps.accounts.urls_api")),
+    path("api/v1/", include("apps.patients.urls_api")),
+    path("api/v1/", include("apps.appointments.urls_api")),
     path("api/v1/schema/", SpectacularAPIView.as_view(), name="api-schema"),
     path(
         "api/v1/docs/",

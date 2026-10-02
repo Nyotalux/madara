@@ -1,0 +1,20 @@
+{% load i18n %}
+{# Créneaux disponibles d'un praticien : bloc complet, rechargé par HTMX. #}
+<div class="field" id="slot-field">
+    <label for="id_slot">{% translate "Créneau disponible" %}</label>
+    <select name="slot" id="id_slot" class="form-control">
+        {% if slots %}
+            <option value="">{% translate "— Premier créneau libre —" %}</option>
+            {% for start, end in slots %}
+                <option value="{{ start|date:'Y-m-d\TH:i' }}">{{ start|time:"H:i" }} – {{ end|time:"H:i" }}</option>
+            {% endfor %}
+        {% elif closed %}
+            <option value="">{% translate "Praticien fermé ce jour-là" %}</option>
+        {% else %}
+            <option value="">{% translate "Aucun créneau libre (journée complète)" %}</option>
+        {% endif %}
+    </select>
+    <p class="field__help">
+        {% translate "Horaires du praticien, moins ses rendez-vous et indisponibilités." %}
+    </p>
+</div>

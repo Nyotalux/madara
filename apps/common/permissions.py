@@ -99,6 +99,16 @@ class CanReadClinicalData(permissions.BasePermission):
         return _role_of(user) in self.allowed_roles
 
 
+class CanWriteClinicalData(CanReadClinicalData):
+    """Création et modification des données cliniques par le personnel soignant.
+
+    Même périmètre que la lecture : accueil, médecin, infirmier et
+    administrateur de clinique. La comptabilité est exclue.
+    """
+
+    message = "Modification des données cliniques réservée au personnel soignant."
+
+
 class IsSameClinic(permissions.BasePermission):
     """Vérifie que l'objet appartient à la clinique de la requête."""
 
