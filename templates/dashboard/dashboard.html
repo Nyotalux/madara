@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Tableau de bord" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Tableau de bord" %}</h1>
+        <p class="muted">
+            {{ clinic.name }}{% if clinic.city %} — {{ clinic.city }}{% endif %}
+        </p>
+    </div>
+    <span class="badge">{{ today|date:"l j F Y" }}</span>
+</header>
+
+<section class="grid grid--4">
+    <article class="card card--stat">
+        <p class="card__label">{% translate "Membres du personnel" %}</p>
+        <p class="card__value">{{ total_staff }}</p>
+    </article>
+    <article class="card card--stat">
+        <p class="card__label">{% translate "Médecins" %}</p>
+        <p class="card__value">{{ role_counts.DOCTOR|default:"0" }}</p>
+    </article>
+    <article class="card card--stat">
+        <p class="card__label">{% translate "Infirmiers" %}</p>
+        <p class="card__value">{{ role_counts.NURSE|default:"0" }}</p>
+    </article>
+    <article class="card card--stat">
+        <p class="card__label">{% translate "Comptabilité" %}</p>
+        <p class="card__value">{{ role_counts.ACCOUNTANT|default:"0" }}</p>
+    </article>
+</section>
+
+<section class="card">
+    <header class="card__header">
+        <h2>{% translate "Médecins de la clinique" %}</h2>
+        <a class="btn btn--ghost btn--sm" href="{% url 'web:staff-list' %}">{% translate "Voir le personnel" %}</a>
+    </header>
+
+    {% if doctors %}
+        <ul class="list">
+            {% for membership in doctors %}
+                <li class="list__item">
+                    <a href="{% url 'web:staff-detail' membership.pk %}">{{ membership.user.full_name|default:membership.user.email }}</a>
+                    <span class="muted">
+                        {{ membership.practitioner_profile.specialty.name|default:membership.get_role_display }}
+                    </span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty">{% translate "Aucun médecin enregistré pour cette clinique." %}</p>
+    {% endif %}
+</section>
+
+<section class="card card--muted">
+    <h2>{% translate "Jalons à venir" %}</h2>
+    <ol class="milestones">
+        <li>{% translate "Jalon 2 — Patients, rendez-vous et notifications" %}</li>
+        <li>{% translate "Jalon 3 — Consultations, dossier médical et transfert" %}</li>
+        <li>{% translate "Jalon 4 — Facturation, assurances et dépenses" %}</li>
+        <li>{% translate "Jalon 5 — Produits, stock et achats" %}</li>
+        <li>{% translate "Jalon 6 — Paie et rapports" %}</li>
+    </ol>
+</section>
+{% endblock %}

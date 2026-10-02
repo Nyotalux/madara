@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ membership.user.full_name|default:membership.user.email }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{{ membership.user.full_name|default:membership.user.email }}</h1>
+        <p class="muted">
+            {{ membership.get_role_display }} · {{ current_clinic.name }}
+            {% if membership.is_contract_expired %} · <span class="badge badge--alert">{% translate "Contrat échu" %}</span>{% endif %}
+        </p>
+    </div>
+    {% if current_membership.role == "ADMIN" %}
+        <a class="btn btn--ghost" href="{% url 'web:staff-edit' membership.pk %}">{% translate "Modifier" %}</a>
+    {% endif %}
+</header>
+
+<section class="grid grid--2">
+    <article class="card">
+        <h2>{% translate "Contact" %}</h2>
+        <dl class="details">
+            <dt>{% translate "E-mail" %}</dt><dd>{{ membership.user.email }}</dd>
+            <dt>{% translate "Téléphone" %}</dt><dd>{{ membership.user.phone|default:"—" }}</dd>
+            <dt>{% translate "Langue" %}</dt><dd>{{ membership.user.get_locale_display }}</dd>
+        </dl>
+    </article>
+
+    <article class="card">
+        <h2>{% translate "Contrat" %}</h2>
+        <dl class="details">
+            <dt>{% translate "Matricule" %}</dt><dd>{{ membership.employee_number|default:"—" }}</dd>
+            <dt>{% translate "Embauche" %}</dt><dd>{{ membership.hire_date|default:"—"|date:"d/m/Y" }}</dd>
+            <dt>{% translate "Fin de contrat" %}</dt><dd>{{ membership.contract_end_date|default:"—"|date:"d/m/Y" }}</dd>
+        </dl>
+    </article>
+</section>
+
+<section class="card">
+    <h2>{% translate "Horaires d'ouverture" %}</h2>
+    {% if opening_hours %}
+        <ul class="list list--dense">
+            {% for hour in opening_hours %}
+                <li class="list__item">
+                    <span>{{ hour.get_weekday_display }}</span>
+                    {% if hour.is_closed %}
+                        <span class="muted">{% translate "Fermé" %}</span>
+                    {% else %}
+                        <span>{{ hour.start_time|time:"H:i" }} – {{ hour.end_time|time:"H:i" }}</span>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty">{% translate "Aucun horaire défini." %}</p>
+    {% endif %}
+</section>
+
+<section class="card">
+    <h2>{% translate "Indisponibilités" %}</h2>
+    {% if blocked_slots %}
+        <ul class="list list--dense">
+            {% for slot in blocked_slots %}
+                <li class="list__item">
+                    <span>{{ slot.start_at|date:"d/m/Y H:i" }} – {{ slot.end_at|date:"H:i" }}</span>
+                    <span class="muted">{{ slot.reason|default:"—" }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p class="empty">{% translate "Aucune indisponibilité à venir." %}</p>
+    {% endif %}
+</section>
+{% endblock %}

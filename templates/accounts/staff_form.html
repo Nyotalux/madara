@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <h1>{{ title }}</h1>
+</header>
+
+<form method="post" class="card form-grid" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+        <div class="alert alert--error">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <fieldset>
+        <legend>{% translate "Identité" %}</legend>
+        <div class="field">
+            <label for="{{ form.email.id_for_label }}">{% translate "E-mail" %} *</label>
+            {{ form.email }}
+            {% for error in form.email.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.first_name.id_for_label }}">{% translate "Prénom" %}</label>
+            {{ form.first_name }}
+        </div>
+        <div class="field">
+            <label for="{{ form.last_name.id_for_label }}">{% translate "Nom" %} *</label>
+            {{ form.last_name }}
+            {% for error in form.last_name.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.password.id_for_label }}">{% translate "Mot de passe" %}</label>
+            {{ form.password }}
+            {% for error in form.password.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Contrat" %}</legend>
+        <div class="field">
+            <label for="{{ form.role.id_for_label }}">{% translate "Rôle" %} *</label>
+            {{ form.role }}
+            {% for error in form.role.errors %}<p class="field__error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="field">
+            <label for="{{ form.employee_number.id_for_label }}">{% translate "Matricule" %}</label>
+            {{ form.employee_number }}
+            <p class="field__help">{{ form.employee_number.help_text }}</p>
+        </div>
+        <div class="field">
+            <label for="{{ form.hire_date.id_for_label }}">{% translate "Date d'embauche" %}</label>
+            {{ form.hire_date }}
+        </div>
+        <div class="field">
+            <label for="{{ form.contract_end_date.id_for_label }}">{% translate "Fin de contrat" %}</label>
+            {{ form.contract_end_date }}
+        </div>
+        <div class="field">
+            <label for="{{ form.base_salary.id_for_label }}">{% translate "Salaire de base" %}</label>
+            {{ form.base_salary }}
+        </div>
+        <div class="field field--full">
+            <label for="{{ form.notes.id_for_label }}">{% translate "Notes" %}</label>
+            {{ form.notes }}
+        </div>
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Enregistrer" %}</button>
+        <a class="btn btn--ghost" href="{% url 'web:staff-list' %}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}

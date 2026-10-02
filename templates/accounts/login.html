@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Connexion" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <section class="auth-card">
+        <h1 class="auth-card__title">{% translate "Connexion" %}</h1>
+        <p class="auth-card__subtitle">
+            {% translate "Accédez à votre clinique." %}
+        </p>
+
+        {% if form.non_field_errors %}
+            <div class="alert alert--error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <form method="post" novalidate>
+            {% csrf_token %}
+
+            <div class="field">
+                <label for="{{ form.username.id_for_label }}">{% translate "E-mail" %}</label>
+                {{ form.username }}
+                {% if form.username.errors %}<p class="field__error">{{ form.username.errors|striptags }}</p>{% endif %}
+            </div>
+
+            <div class="field">
+                <label for="{{ form.password.id_for_label }}">{% translate "Mot de passe" %}</label>
+                {{ form.password }}
+                {% if form.password.errors %}<p class="field__error">{{ form.password.errors|striptags }}</p>{% endif %}
+            </div>
+
+            {% if clinics|length > 1 %}
+                <div class="field">
+                    <label for="id_clinic">{% translate "Clinique" %}</label>
+                    <select name="clinic" id="id_clinic" class="form-control">
+                        <option value="">{% translate "Ma clinique par défaut" %}</option>
+                        {% for clinic in clinics %}
+                            <option value="{{ clinic.pk }}">{{ clinic.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+
+            <input type="hidden" name="next" value="{{ next }}">
+            <button type="submit" class="btn btn--primary btn--block">{% translate "Se connecter" %}</button>
+        </form>
+    </section>
+
+    <aside class="auth-aside">
+        <h2>{% translate "Gestion de clinique" %}</h2>
+        <ul class="feature-list">
+            <li>{% translate "Dossiers patients et planning des rendez-vous" %}</li>
+            <li>{% translate "Consultations, diagnostics et ordonnances" %}</li>
+            <li>{% translate "Dossier médical et transfert entre praticiens" %}</li>
+            <li>{% translate "Facturation, stock et paie" %}</li>
+        </ul>
+    </aside>
+</div>
+{% endblock %}

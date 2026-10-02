@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ clinic.name }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{{ clinic.name }}</h1>
+        <p class="muted">
+            {% if clinic.legal_name %}{{ clinic.legal_name }}{% else %}{{ clinic.city }}{% endif %}
+        </p>
+    </div>
+    <span class="badge">{{ clinic.get_currency_display|default:clinic.currency }}</span>
+</header>
+
+<section class="grid grid--2">
+    <article class="card">
+        <h2>{% translate "Coordonnées" %}</h2>
+        <dl class="details">
+            <dt>{% translate "Adresse" %}</dt><dd>{{ clinic.address|linebreaksbr|default:"—" }}</dd>
+            <dt>{% translate "Téléphone" %}</dt><dd>{{ clinic.display_phone|default:"—" }}</dd>
+            <dt>{% translate "Urgences" %}</dt><dd>{{ clinic.emergency_phone|default:"—" }}</dd>
+            <dt>{% translate "E-mail" %}</dt><dd>{{ clinic.email|default:"—" }}</dd>
+            <dt>{% translate "Site web" %}</dt><dd>{{ clinic.website|default:"—" }}</dd>
+        </dl>
+    </article>
+
+    <article class="card">
+        <h2>{% translate "Administratif" %}</h2>
+        <dl class="details">
+            <dt>{% translate "Identifiant fiscal" %}</dt><dd>{{ clinic.tax_identifier|default:"—" }}</dd>
+            <dt>{% translate "Agrément" %}</dt><dd>{{ clinic.license_number|default:"—" }}</dd>
+            <dt>{% translate "TVA" %}</dt><dd>{{ clinic.tax_rate }} %</dd>
+            <dt>{% translate "Créneau de rendez-vous" %}</dt><dd>{{ clinic.appointment_slot_minutes }} min</dd>
+            <dt>{% translate "Relance impayés" %}</dt><dd>{{ clinic.dunning_days }} j</dd>
+        </dl>
+    </article>
+</section>
+
+<section class="card">
+    <header class="card__header">
+        <h2>{% translate "Équipe" %} ({{ staff.count }})</h2>
+        <a class="btn btn--ghost btn--sm" href="{% url 'web:staff-list' %}">{% translate "Gérer le personnel" %}</a>
+    </header>
+    <ul class="list">
+        {% for membership in staff %}
+            <li class="list__item">
+                <a href="{% url 'web:staff-detail' membership.pk %}">{{ membership.user.full_name|default:membership.user.email }}</a>
+                <span class="muted">{{ membership.get_role_display }}</span>
+            </li>
+        {% empty %}
+            <li class="empty">{% translate "Aucun membre enregistré." %}</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endblock %}

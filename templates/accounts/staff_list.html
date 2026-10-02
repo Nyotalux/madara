@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Personnel" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Personnel de la clinique" %}</h1>
+        <p class="muted">{{ current_clinic.name }}</p>
+    </div>
+    {% if current_membership.role == "ADMIN" %}
+        <a class="btn btn--primary" href="{% url 'web:staff-create' %}">{% translate "Nouveau membre" %}</a>
+    {% endif %}
+</header>
+
+<form method="get" class="filters">
+    <label class="visually-hidden" for="id_role">{% translate "Rôle" %}</label>
+    <select name="role" id="id_role" class="form-control" onchange="this.form.submit()">
+        <option value="">{% translate "Tous les rôles" %}</option>
+        {% for value, label, total in role_rows %}
+            <option value="{{ value }}" {% if role_filter == value %}selected{% endif %}>
+                {{ label }} ({{ total }})
+            </option>
+        {% endfor %}
+    </select>
+</form>
+
+{% if memberships %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>{% translate "Nom" %}</th>
+                <th>{% translate "Rôle" %}</th>
+                <th>{% translate "Matricule" %}</th>
+                <th>{% translate "Contact" %}</th>
+                <th>{% translate "Statut" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for membership in memberships %}
+                <tr class="{% if not membership.is_active %}is-archived{% endif %}">
+                    <td>
+                        <a href="{% url 'web:staff-detail' membership.pk %}">
+                            {{ membership.user.full_name|default:membership.user.email }}
+                        </a>
+                        <div class="muted small">{{ membership.user.email }}</div>
+                    </td>
+                    <td>{{ membership.get_role_display }}</td>
+                    <td>{{ membership.employee_number|default:"—" }}</td>
+                    <td>
+                        {{ membership.user.phone|default:"—" }}
+                        {% if membership.practitioner_profile.specialty %}
+                            <div class="muted small">{{ membership.practitioner_profile.specialty.name }}</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if membership.is_active %}
+                            <span class="badge badge--ok">{% translate "Actif" %}</span>
+                        {% else %}
+                            <span class="badge badge--muted">{% translate "Désactivé" %}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <p class="empty">{% translate "Aucun membre du personnel pour le moment." %}</p>
+{% endif %}
+{% endblock %}

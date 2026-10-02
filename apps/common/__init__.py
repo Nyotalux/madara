@@ -1,0 +1,1 @@
+"""Socle technique transversal : cloisonnement clinique, managers, API, sante."""

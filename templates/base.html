@@ -1,0 +1,87 @@
+{% load static i18n %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <script src="{% static 'js/htmx.min.js' %}" defer></script>
+</head>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+<a class="skip-link" href="#contenu">Aller au contenu</a>
+
+<header class="topbar">
+    <div class="topbar__brand">
+        <span class="brand-mark" aria-hidden="true">✚</span>
+        <span class="brand-name">Madara</span>
+    </div>
+
+    <nav class="topbar__nav" aria-label="Navigation principale">
+        <a href="{% url 'web:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}is-active{% endif %}">
+            {% translate "Tableau de bord" %}
+        </a>
+        {% if current_clinic %}
+            <a href="{% url 'web:staff-list' %}" class="{% if 'staff' in request.resolver_match.url_name %}is-active{% endif %}">
+                {% translate "Personnel" %}
+            </a>
+            <span class="nav-placeholder" title="{% translate 'Disponible au jalon 2' %}">{% translate "Patients" %}</span>
+            <span class="nav-placeholder" title="{% translate 'Disponible au jalon 2' %}">{% translate "Rendez-vous" %}</span>
+            <span class="nav-placeholder" title="{% translate 'Disponible au jalon 4' %}">{% translate "Consultations" %}</span>
+            <span class="nav-placeholder" title="{% translate 'Disponible au jalon 5' %}">{% translate "Facturation" %}</span>
+        {% endif %}
+    </nav>
+
+    <div class="topbar__right">
+        {% if available_clinics|length > 1 %}
+            <form method="post" action="{% url 'web:switch-clinic' %}" class="clinic-switch">
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <label class="visually-hidden" for="clinic-select">{% translate "Clinique" %}</label>
+                <select name="clinic" id="clinic-select" onchange="this.form.submit()">
+                    {% for clinic in available_clinics %}
+                        <option value="{{ clinic.pk }}" {% if clinic == current_clinic %}selected{% endif %}>
+                            {{ clinic.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <noscript><button type="submit" class="btn btn--ghost btn--sm">{% translate "Changer" %}</button></noscript>
+            </form>
+        {% elif current_clinic %}
+            <span class="clinic-chip">{{ current_clinic.name }}</span>
+        {% endif %}
+
+        {% if unread_notifications %}
+            <span class="badge badge--alert" title="{% translate 'Notifications non lues' %}">{{ unread_notifications }}</span>
+        {% endif %}
+
+        {% if user.is_authenticated %}
+            <div class="user-menu">
+                <a href="{% url 'web:profile' %}" class="user-menu__name">{{ user.full_name|default:user.email }}</a>
+                <span class="user-menu__role">{{ current_role|default:"" }}</span>
+                <form method="post" action="{% url 'web:logout' %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--ghost btn--sm">{% translate "Déconnexion" %}</button>
+                </form>
+            </div>
+        {% endif %}
+    </div>
+</header>
+
+{% if messages %}
+    <ul class="flash-messages" role="status">
+        {% for message in messages %}
+            <li class="flash flash--{{ message.tags|default:'info' }}">{{ message }}</li>
+        {% endfor %}
+    </ul>
+{% endif %}
+
+<main id="contenu" class="page">
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+    <span>{{ app_name }} v{{ app_version }}</span>
+    {% if current_clinic %}<span>· {{ current_clinic.name }}</span>{% endif %}
+    <span>· <a href="{% url 'api-docs' %}" target="_blank" rel="noopener">API</a></span>
+</footer>
+</body>
+</html>
