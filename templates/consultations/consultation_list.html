@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Consultations" %} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Consultations" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Consultations" %}</h1>
+        <p class="muted">{{ clinic.name }} — {{ result_count }} {% translate "résultat(s)" %}</p>
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{% url 'web:agenda' %}">{% translate "Agenda" %}</a>
+        {% if can_write %}
+            <a class="btn btn--primary" href="{% url 'web:consultation-create' %}">{% translate "Nouvelle consultation" %}</a>
+        {% endif %}
+    </div>
+</div>
+
+<section class="grid grid--4">
+    <article class="card card--stat">
+        <p class="card__label">{% translate "Total" %}</p>
+        <p class="card__value">{{ stats.total }}</p>
+    </article>
+    <article class="card card--stat">
+        <p class="card__label">{% translate "Aujourd'hui" %}</p>
+        <p class="card__value">{{ stats.today }}</p>
+    </article>
+    <article class="card card--stat">
+        <p class="card__label">{% translate "En cours" %}</p>
+        <p class="card__value">{{ stats.in_progress }}</p>
+    </article>
+    <article class="card card--stat">
+        <p class="card__label">{% translate "Terminées" %}</p>
+        <p class="card__value">{{ stats.completed }}</p>
+    </article>
+</section>
+
+<section class="card">
+    <form method="get" class="filters-filters">
+        <div class="filters-grid">
+            <div class="field">
+                <label for="id_q">{{ form.q.label }}</label>
+                {{ form.q }}
+            </div>
+            <div class="field">
+                <label for="id_practitioner">{{ form.practitioner.label }}</label>
+                {{ form.practitioner }}
+            </div>
+            <div class="field">
+                <label for="id_status">{{ form.status.label }}</label>
+                {{ form.status }}
+            </div>
+            <div class="field">
+                <label for="id_kind">{{ form.kind.label }}</label>
+                {{ form.kind }}
+            </div>
+            <div class="field">
+                <label for="id_du">{{ form.du.label }}</label>
+                {{ form.du }}
+            </div>
+            <div class="field">
+                <label for="id_au">{{ form.au.label }}</label>
+                {{ form.au }}
+            </div>
+        </div>
+        <div class="form-actions">
+            <button type="submit" class="btn btn--primary">{% translate "Filtrer" %}</button>
+            <a class="btn" href="{% url 'web:consultation-list' %}">{% translate "Réinitialiser" %}</a>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    {% if consultations %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>{% translate "Date" %}</th>
+                    <th>{% translate "Patient" %}</th>
+                    <th>{% translate "Praticien" %}</th>
+                    <th>{% translate "Type" %}</th>
+                    <th>{% translate "Motif" %}</th>
+                    <th>{% translate "Statut" %}</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for consultation in consultations %}
+                    <tr>
+                        <td>
+                            {{ consultation.display_date }}
+                            <div class="muted small mono">{{ consultation.reference }}</div>
+                        </td>
+                        <td>
+                            <a href="{% url 'web:consultation-detail' consultation.pk %}">{{ consultation.patient.display_name }}</a>
+                            <div class="muted small mono">{{ consultation.patient.reference }}</div>
+                        </td>
+                        <td>{{ consultation.practitioner_name }}</td>
+                        <td>{{ consultation.kind_label }}</td>
+                        <td>{{ consultation.chief_complaint|default:"—"|truncatechars:40 }}</td>
+                        <td>{% include "consultations/_badge.html" with consultation=consultation %}</td>
+                        <td class="table__actions">
+                            <a class="btn btn--small" href="{% url 'web:consultation-detail' consultation.pk %}">{% translate "Ouvrir" %}</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% include "includes/pagination.html" with page_obj=page_obj querystring=querystring %}
+    {% else %}
+        <p class="empty">{% translate "Aucune consultation enregistrée." %}</p>
+    {% endif %}
+</section>
+{% endblock %}

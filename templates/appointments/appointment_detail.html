@@ -127,6 +127,15 @@
                     {% endif %}
                 </div>
             {% endif %}
+            {% if can_start_consultation and appointment.status == "ARRIVED" or can_start_consultation and appointment.status == "IN_PROGRESS" %}
+                <div class="quick-actions">
+                    {% if appointment.consultation %}
+                        <a class="btn btn--primary btn--small" href="{% url 'web:consultation-detail' appointment.consultation.pk %}">{% translate "Ouvrir la consultation" %}</a>
+                    {% else %}
+                        <a class="btn btn--primary btn--small" href="{% url 'web:consultation-start' appointment.pk %}">{% translate "Démarrer la consultation" %}</a>
+                    {% endif %}
+                </div>
+            {% endif %}
         </section>
 
         <section class="card">

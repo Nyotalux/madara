@@ -38,6 +38,12 @@ from .services import BOOKING_ROLES
 #: Un médecin voit son propre agenda ; l'accueil et l'administrateur voient
 #: toute la clinique (et peuvent filtrer par praticien).
 PRACTITIONER_SCOPED_ROLES = (Membership.Role.DOCTOR, Membership.Role.NURSE)
+#: Rôles habilités à ouvrir une consultation depuis la salle d'attente (jalon 4).
+CONSULTATION_WRITE_ROLES = (
+    Membership.Role.DOCTOR,
+    Membership.Role.NURSE,
+    Membership.Role.ADMIN,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +131,7 @@ def waiting_room(request):
         "in_progress": appointments.filter(status=Appointment.Status.IN_PROGRESS),
         "today": timezone.localdate(),
         "restricted": _is_restricted(request),
+        "can_start_consultation": _can_start_consultation(request),
     }
     return render(request, "appointments/waiting_room.html", context)
 
@@ -210,6 +217,7 @@ def appointment_detail(request, pk):
             "cancellation_log": appointment.cancellations.select_related("cancelled_by"),
             "can_edit": _can_edit(request, appointment),
             "can_manage": _can_manage(request, appointment),
+            "can_start_consultation": _can_start_consultation(request),
             "other_appointments": other_appointments,
             "timeline": timeline,
         },
@@ -459,6 +467,16 @@ def _can_manage(request, appointment) -> bool:
     if membership.role in {"RECEPTION", "ADMIN"}:
         return True
     return membership.pk == appointment.practitioner_id
+
+
+def _can_start_consultation(request) -> bool:
+    """Seuls les rôles soignants (et l'admin) ouvrent une consultation (jalon 4)."""
+    membership = getattr(request, "clinic_membership", None)
+    if membership is None:
+        return False
+    if request.user.is_platform_staff:
+        return True
+    return membership.role in CONSULTATION_WRITE_ROLES
 
 
 def _selected_practitioner(request, form, practitioners):

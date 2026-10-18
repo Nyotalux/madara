@@ -90,8 +90,8 @@ Sélection de la clinique courante :
 Chaque dossier porte une référence automatique `PT-AAAA-00001` par clinique et couvre
 l'identité (CIN, passeport), le contact, la couverture sociale (assureur, validité) et
 les repères médicaux (groupe sanguin, allergies, maladies chroniques, traitement en
-cours). Le dossier médical complet (consultations, ordonnances, documents) arrive au
-jalon 4.
+cours). Les consultations, ordonnances, pièces jointes et partages sont décrits
+au § 8.
 
 | Écran | Route |
 |-------|-------|
@@ -137,7 +137,50 @@ Cloisonnement : un médecin ou un infirmier ne voit et ne modifie que ses propre
 rendez-vous ; l'accueil et l'administrateur gèrent toute la clinique. Les rappels
 automatiques arrivent au jalon 5 (le champ `reminder_sent_at` est déjà en place).
 
-## 8. API mobile (jetons)
+## 8. Consultations et dossiers médicaux (jalon 4)
+
+La consultation est l'acte médical : elle prolonge un rendez-vous de la salle
+d'attente (« Démarrer la consultation ») ou se crée librement pour un patient. Elle
+porte le motif, l'examen, les constantes, le diagnostic, la conduite à tenir et ses
+ordonnances. La règle métier vit dans `apps/consultations/services.py` (démarrage,
+clôture, annulation) et `apps/medical_records/services.py` (pièces, partages).
+
+| Règle | Comportement |
+|-------|--------------|
+| Références | `CONS-AAAA-00001` (consultation), `ORD-AAAA-00001` (ordonnance), `DM-AAAA-00001` (dossier médical) |
+| Démarrage depuis la salle d'attente | le rendez-vous passe « en consultation » ; un double clic renvoie la consultation déjà ouverte |
+| Clôture | la consultation passe « terminée » et le rendez-vous associé passe « terminé » |
+| Annulation | la consultation est conservée (`CANCELLED`), le motif rejoint les notes ; elle n'est plus modifiable |
+| Écriture des actes | médecin, infirmier, administrateur — l'accueil lit et gère les dossiers mais ne rédige pas de consultation |
+| Périmètre | un médecin ou un infirmier ne voit et n'agit que sur ses propres consultations |
+| Dossier médical | un par patient, créé à la volée ; chaque pièce est validée (extension et poids maximum) |
+| Partage | lien public en lecture seule, durée bornée (30 jours maximum, `RECORD_SHARE_MAX_DAYS`) et révocable |
+
+| Écran | Route |
+|-------|-------|
+| Historique filtrable + compteurs | `/consultations/` |
+| Fiche (compte rendu, constantes, ordonnances) | `/consultations/{id}/` |
+| Démarrage (depuis la salle d'attente ou libre) | `/rendez-vous/{id}/consultation/`, `/consultations/nouveau/` |
+| Compte rendu / clôture / annulation | `/consultations/{id}/modifier/`, `/consultations/{id}/terminer/`, `/consultations/{id}/annuler/` |
+| Ordonnance : rédaction et version imprimable | `/consultations/{id}/ordonnance/`, `/ordonnances/{id}/imprimer/` |
+| Dossier médical du patient | `/patients/{id}/dossier/` |
+| Antécédents structurés | `/patients/{id}/dossier/modifier/` |
+| Pièces jointes | `/patients/{id}/dossier/document/`, `/dossiers/documents/{id}/retirer/` |
+| Partage temporaire | `/patients/{id}/dossier/partage/`, `/dossiers/partages/{id}/revoquer/` |
+| Accès public en lecture seule (jeton) | `/dossier/partage/{uuid}/` |
+
+API : `/api/v1/consultations/` (+ `?status=`, `?kind=`, `?patient=`, `?practitioner=`),
+`…/{id}/complete/`, `…/{id}/cancel/`, `/api/v1/prescriptions/` (+ `?consultation=`),
+`/api/v1/medical-records/` (+ `?patient=`, `?search=`),
+`/api/v1/medical-documents/` (+ `?record=`, `?category=`) et
+`/api/v1/medical-shares/` (`…/{id}/revoke/`).
+
+Cloisonnement : la lecture est ouverte à `ADMIN`, `RECEPTION`, `DOCTOR` et `NURSE` ;
+l'écriture des actes médicaux (consultation, ordonnance) est réservée à `DOCTOR`,
+`NURSE` et `ADMIN`, celle du dossier (antécédents, pièces, partages) inclut
+`RECEPTION`. `ACCOUNTANT` est exclu partout.
+
+## 9. API mobile (jetons)
 
 ```bash
 # Connexion
@@ -172,13 +215,21 @@ curl http://127.0.0.1:8765/api/v1/clinics/current/ \
 | `GET` | `/api/v1/patients/statistics/` | compteurs de dossiers |
 | `POST` | `/api/v1/patients/{id}/archive/` | archivage (administrateur) |
 | `POST` | `/api/v1/patients/{id}/restore/` | restauration (administrateur) |
+| `GET`/`POST` | `/api/v1/appointments/` | rendez-vous (voir § 7) |
+| `GET`/`POST` | `/api/v1/consultations/` | consultations (voir § 8) |
+| `GET`/`POST` | `/api/v1/prescriptions/` | ordonnances et leurs lignes |
+| `GET`/`PATCH` | `/api/v1/medical-records/` | antécédents du dossier médical |
+| `GET`/`POST` | `/api/v1/medical-documents/` | pièces jointes (multipart) |
+| `GET`/`POST` | `/api/v1/medical-shares/` | liens de partage temporaires |
 
-## 9. Données de démonstration
+## 10. Données de démonstration
 
 `python manage.py seed_demo` crée deux cliniques, leurs équipes, des horaires,
 40 dossiers patients et 7 jours d'agenda par clinique (l'un des dossiers est archivé
 pour illustrer le filtre ; l'agenda respecte les horaires, les conflits et affiche
-des rendez-vous déjà terminés pour que la journée soit vivante).
+des rendez-vous déjà terminés pour que la journée soit vivante). Il remplit ensuite
+les dossiers médicaux (antécédents, pièces scannées, un partage), les consultations
+clôturées adossées aux rendez-vous honorés et une partie de leurs ordonnances.
 Options utiles : `--patients-per-clinic`, `--staff-per-clinic`, `--agenda-days`, `--flush`.
 
 | Clinique | Slug | Comptes |
@@ -189,7 +240,7 @@ Options utiles : `--patients-per-clinic`, `--staff-per-clinic`, `--agenda-days`,
 Mot de passe commun : `Madara2026!`. Administrators plateforme : `admin@madara.ma`.
 `--flush` repart de zéro.
 
-## 10. Tests et qualité
+## 11. Tests et qualité
 
 ```bash
 pytest                       # suite complète (base de test PostgreSQL dédiée)
@@ -199,13 +250,15 @@ python manage.py makemigrations --check --dry-run
 python scripts/smoke_test.py # parcours HTTP de bout en bout (serveur démarré)
 ```
 
-`scripts/smoke_test.py` (83 vérifications) vérifie la santé du service, la connexion
+`scripts/smoke_test.py` (107 vérifications) vérifie la santé du service, la connexion
 web et API, le cloisonnement entre cliniques, les refus par rôle, le parcours dossier
-patient (création web, recherche, fiche, API CRUD, archivage refusé au médecin) et
-l'agenda (jour, semaine, salle d'attente, historique, cloisonnement par rôle, prise de
-rendez-vous refusée sans créneau valide, API créneaux/statuts/transitions).
+patient (création web, recherche, fiche, API CRUD, archivage refusé au médecin), l'agenda
+(jour, semaine, salle d'attente, historique, cloisonnement par rôle, prise de rendez-vous
+refusée sans créneau valide, API créneaux/statuts/transitions) et le jalon 4 (menu
+consultations, dossier médical depuis la fiche patient, démarrage d'acte refusé à
+l'accueil, API consultations/ordonnances/dossiers médicaux).
 
-## 11. Structure du projet
+## 12. Structure du projet
 
 ```
 apps/
@@ -213,8 +266,8 @@ apps/
   accounts/       cliniques, utilisateurs, rôles, planning, auth web et API
   patients/       dossiers patients (jalon 2 — livré)
   appointments/   agenda et rendez-vous (jalon 3 — livré)
-  consultations/  motifs d'admission (jalon 4)
-  medical_records/ dossiers et documents médicaux (jalon 4)
+  consultations/  consultations, ordonnances (jalon 4 — livré)
+  medical_records/ dossiers, pièces jointes et partages (jalon 4 — livré)
   notifications/  e-mails, WhatsApp, rappels (jalon 5)
   billing/        factures, règlements, impayés (jalon 6)
   inventory/      produits et stock (jalon 6)
@@ -226,12 +279,12 @@ tests/            tests pytest
 scripts/          outils (smoke test)
 ```
 
-## 12. Jalons
+## 13. Jalons
 
 1. Socle multi-clinique, rôles, authentification web/API, dashboard minimal — **terminé**
 2. Dossiers patients — **terminé** (web + API, recherche, impression, archivage)
 3. Agenda et rendez-vous — **terminé** (web + API, créneaux, conflits, salle d'attente)
-4. Consultations et dossiers médicaux
+4. Consultations et dossiers médicaux — **terminé** (web + API, salle d'attente → consultation → clôture, ordonnances, pièces jointes, partage de dossier)
 5. Notifications et rappels
 6. Facturation, stock et salaires
 7. Tableaux de bord et reporting

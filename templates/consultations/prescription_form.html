@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Nouvelle ordonnance" %} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Ordonnance" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Nouvelle ordonnance" %}</h1>
+        <p class="muted">
+            {{ consultation.patient.display_name }} — <span class="mono">{{ consultation.reference }}</span>
+            · {{ consultation.started_at|date:"d/m/Y H:i" }}
+            · {{ consultation.practitioner_name }}
+        </p>
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</div>
+
+{% if form.non_field_errors or formset.non_form_errors %}
+    <div class="alert alert--error">
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+        {% for error in formset.non_form_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+{% endif %}
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+
+    <fieldset>
+        <legend>{% translate "En-tête" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.issued_at %}
+            {% include "includes/field.html" with field=form.notes %}
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Médicaments" %}</legend>
+        {{ formset.management_form }}
+        <div id="prescription-items">
+            {% for item_form in formset %}
+                <div class="form-grid form-grid--3 prescription-item">
+                    {% for hidden in item_form.hidden_fields %}{{ hidden }}{% endfor %}
+                    {% include "includes/field.html" with field=item_form.medication %}
+                    {% include "includes/field.html" with field=item_form.dosage %}
+                    {% include "includes/field.html" with field=item_form.frequency %}
+                    {% include "includes/field.html" with field=item_form.duration %}
+                    {% include "includes/field.html" with field=item_form.instructions %}
+                    {% include "includes/field.html" with field=item_form.DELETE %}
+                </div>
+            {% endfor %}
+        </div>
+        <p class="form-actions">
+            <button type="button" class="btn btn--sm" id="add-prescription-item">{% translate "Ajouter une ligne" %}</button>
+        </p>
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Enregistrer l'ordonnance" %}</button>
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+
+<template id="prescription-item-template">
+    <div class="form-grid form-grid--3 prescription-item">
+        {% for hidden in formset.empty_form.hidden_fields %}{{ hidden }}{% endfor %}
+        {% include "includes/field.html" with field=formset.empty_form.medication %}
+        {% include "includes/field.html" with field=formset.empty_form.dosage %}
+        {% include "includes/field.html" with field=formset.empty_form.frequency %}
+        {% include "includes/field.html" with field=formset.empty_form.duration %}
+        {% include "includes/field.html" with field=formset.empty_form.instructions %}
+        {% include "includes/field.html" with field=formset.empty_form.DELETE %}
+    </div>
+</template>
+
+<script>
+(function () {
+    var container = document.getElementById("prescription-items");
+    var addButton = document.getElementById("add-prescription-item");
+    var totalForms = document.getElementById("id_items-TOTAL_FORMS");
+    var template = document.getElementById("prescription-item-template");
+    if (!container || !addButton || !totalForms || !template) {
+        return;
+    }
+    addButton.addEventListener("click", function () {
+        var index = parseInt(totalForms.value, 10);
+        var markup = template.innerHTML.replace(/__prefix__/g, index);
+        var holder = document.createElement("div");
+        holder.innerHTML = markup.trim();
+        container.appendChild(holder.firstElementChild);
+        totalForms.value = index + 1;
+    });
+})();
+</script>
+{% endblock %}

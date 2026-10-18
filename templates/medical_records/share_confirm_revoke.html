@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Révoquer un partage" %} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Révoquer un partage" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Révoquer le partage" %}</h1>
+        <p class="muted">
+            {{ share.record.patient.display_name }} —
+            <span class="badge {{ share.status_css }}">{{ share.status_label }}</span>
+            {{ share.shared_with|default:_("Destinataire non précisé") }}
+        </p>
+    </div>
+</div>
+
+<div class="alert alert--error">
+    {% translate "Le lien sera immédiatement inutilisable. Cette action est définitive." %}
+</div>
+
+<dl class="details">
+    <dt>{% translate "Destinataire" %}</dt>
+    <dd>{{ share.shared_with|default:"—" }}</dd>
+    <dt>{% translate "Expire le" %}</dt>
+    <dd>{{ share.expires_at|date:"d/m/Y H:i" }}</dd>
+    <dt>{% translate "Note" %}</dt>
+    <dd>{{ share.note|default:"—" }}</dd>
+    <dt>{% translate "Créé le" %}</dt>
+    <dd>{{ share.created_at|date:"d/m/Y H:i" }}{% if share.created_by %} — {{ share.created_by.full_name }}{% endif %}</dd>
+</dl>
+
+<form method="post" class="form-actions">
+    {% csrf_token %}
+    <button type="submit" class="btn btn--primary">{% translate "Révoquer le partage" %}</button>
+    <a class="btn" href="{% url 'web:medical-record' patient_id %}">{% translate "Annuler" %}</a>
+</form>
+{% endblock %}

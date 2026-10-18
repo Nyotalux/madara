@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Ordonnance" %} {{ prescription.reference }} — {{ clinic.name }}{% endblock %}
+
+{% block content %}
+<article class="card print-sheet">
+    <header class="card__header">
+        <div>
+            <h1>{{ clinic.name }}</h1>
+            <p class="muted small">
+                {{ clinic.address }}{% if clinic.city %} — {{ clinic.city }}{% endif %}
+                {% if clinic.display_phone %} · {{ clinic.display_phone }}{% endif %}
+            </p>
+        </div>
+        <div class="muted small">
+            {% translate "Édition le" %} {% now "d/m/Y H:i" %}<br>
+            <span class="mono">{{ prescription.reference }}</span>
+        </div>
+    </header>
+
+    <h2>{% translate "Ordonnance" %}</h2>
+    <p class="muted">
+        <strong>{{ prescription.patient.display_name }}</strong>
+        {% if prescription.patient.birth_date %}· {{ prescription.patient.birth_date|date:"d/m/Y" }} ({{ prescription.patient.age_label }}){% endif %}
+        · {% translate "établie le" %} {{ prescription.issued_at|date:"d/m/Y" }}
+    </p>
+
+    <ol class="list">
+        {% for item in items %}
+            <li class="list__item">
+                <span>
+                    <strong>{{ forloop.counter }}. {{ item.medication }}</strong>
+                    {% if item.dosage %} — {{ item.dosage }}{% endif %}
+                </span>
+                {% if item.frequency or item.duration %}
+                    <span class="muted">
+                        {% if item.frequency %}{{ item.frequency }}{% endif %}
+                        {% if item.duration %}· {{ item.duration }}{% endif %}
+                    </span>
+                {% endif %}
+                {% if item.instructions %}<span class="muted small">{{ item.instructions }}</span>{% endif %}
+            </li>
+        {% empty %}
+            <li class="empty">{% translate "Aucune ligne d'ordonnance." %}</li>
+        {% endfor %}
+    </ol>
+
+    {% if prescription.notes %}
+        <p class="muted small">{{ prescription.notes|linebreaksbr }}</p>
+    {% endif %}
+
+    <h3>{% translate "Visa du prescripteur" %}</h3>
+    <p>{{ prescription.practitioner_name }}</p>
+</article>
+{% endblock %}

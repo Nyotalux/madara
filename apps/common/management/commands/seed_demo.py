@@ -8,10 +8,12 @@ Les identifiants créés sont affichés à la fin de l'exécution.
 
 from __future__ import annotations
 
+import base64
 import random
 from datetime import date, timedelta
 
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -33,6 +35,14 @@ from apps.appointments.services import (
     local_now,
 )
 from apps.common.context import clinic_context, user_context
+from apps.consultations.models import Consultation
+from apps.consultations.services import (
+    add_prescription,
+    complete_consultation,
+    start_consultation,
+)
+from apps.medical_records.models import MedicalRecord
+from apps.medical_records.services import add_document, create_share, ensure_record
 from apps.patients.models import Patient
 
 DEFAULT_PASSWORD = "Madara2026!"
@@ -104,6 +114,87 @@ SPECIALTIES = [
     ("Orthopédie", "ORT"),
 ]
 
+#: Contenus cliniques de démonstration (jalon 4).
+HISTORY_POOL = [
+    "Aucun antécédent notable.",
+    "Hypertension artérielle traitée depuis 5 ans.",
+    "Tabagisme sevré depuis 2 ans (20 paquets-année).",
+    "Appendicectomie en 2015, sans complication.",
+    "Diabète de type 2 sous metformine.",
+]
+EXAMINATION_POOL = [
+    "Bon état général, constantes stables.",
+    "Auscultation cardio-pulmonaire normale.",
+    "Abdomen souple et indolore, pas de défense.",
+    "Examen neurologique sans particularité.",
+    "RAS en dehors du motif de consultation.",
+]
+DIAGNOSIS_POOL = [
+    "Angine érythémateuse",
+    "Hypertension artérielle stable",
+    "Lombalgie mécanique aiguë",
+    "Rhinite allergique saisonnière",
+    "Diabète de type 2 équilibré",
+    "Gastro-entérite virale",
+]
+TREATMENT_POOL = [
+    "Repos, hydratation abondante, surveillance de la température.",
+    "Poursuite du traitement en cours, contrôle des constantes.",
+    "Antibiothérapie de 5 jours, réévaluation si fièvre persistante.",
+    "Antalgiques et anti-inflammatoires si besoin, kinésithérapie.",
+]
+PRESCRIPTION_POOL = [
+    {
+        "medication": "Paracétamol 1 g",
+        "dosage": "1 comprimé",
+        "frequency": "3 fois par jour",
+        "duration": "5 jours",
+        "instructions": "Après les repas",
+    },
+    {
+        "medication": "Amoxicilline 500 mg",
+        "dosage": "1 gélule",
+        "frequency": "2 fois par jour",
+        "duration": "7 jours",
+        "instructions": "Terminer la cure",
+    },
+    {
+        "medication": "Ibuprofène 400 mg",
+        "dosage": "1 comprimé",
+        "frequency": "2 fois par jour",
+        "duration": "5 jours",
+        "instructions": "À prendre au repas",
+    },
+    {
+        "medication": "Oméprazole 20 mg",
+        "dosage": "1 gélule",
+        "frequency": "1 fois par jour",
+        "duration": "14 jours",
+        "instructions": "Le matin à jeun",
+    },
+    {
+        "medication": "Vitamine D 100 000 UI",
+        "dosage": "1 ampoule",
+        "frequency": "1 fois par mois",
+        "duration": "3 mois",
+        "instructions": "Avec un repas gras",
+    },
+]
+DOCUMENT_POOL = [
+    ("PRESCRIPTION", "Ordonnance scannée"),
+    ("LAB", "Bilan sanguin — numération formule"),
+    ("IMAGING", "Radiographie du thorax"),
+    ("REPORT", "Compte rendu de consultation externe"),
+    ("INSURANCE", "Attestation de mutuelle"),
+    ("CONSENT", "Consentement éclairé signé"),
+]
+
+#: PNG 1×1 transparent, pour générer des pièces jointes de démonstration.
+DEMO_PNG_BASE64 = (
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwADhgGA"
+    "WjR9awAAAABJRU5ErkJggg=="
+)
+
 
 class Command(BaseCommand):
     help = "Crée un jeu de données de démonstration pour Madara."
@@ -163,6 +254,10 @@ class Command(BaseCommand):
             appointments = self._create_appointments(
                 clinic, staff, patients, options["agenda_days"]
             )
+            consultations = self._create_consultations(
+                clinic, staff, patients, appointments
+            )
+            self._create_medical_records(clinic, patients, consultations)
             self._link_platform_admin(platform, clinic)
             clinics.append((clinic, staff, patients, appointments))
 
@@ -189,7 +284,10 @@ class Command(BaseCommand):
     # -- étapes ------------------------------------------------------------
 
     def _flush(self):
-        # Les rendez-vous protègent leur praticien : on les supprime d'abord.
+        # Les consultations et les ordonnances protègent leur praticien (PROTECT) :
+        # on les supprime avant les rendez-vous et les cliniques.
+        Consultation.all_objects.all().hard_delete()
+        MedicalRecord.all_objects.all().hard_delete()
         AppointmentCancellation.objects.all().delete()
         Appointment.all_objects.all().hard_delete()
         Clinic.objects.all().delete()
@@ -472,6 +570,198 @@ class Command(BaseCommand):
                         created.append(appointment)
 
         return created
+
+    def _create_consultations(
+        self, clinic, staff, patients, appointments
+    ) -> list[Consultation]:
+        """Consultations clôturées adossées aux rendez-vous honorés."""
+        if not patients or not appointments:
+            return []
+
+        with clinic_context(clinic):
+            if Consultation.all_objects.filter(clinic=clinic).exists():
+                existing = list(Consultation.all_objects.filter(clinic=clinic))
+                self.stdout.write(
+                    f"  {len(existing)} consultations déjà présentes : "
+                    "génération ignorée."
+                )
+                return existing
+
+            created: list[Consultation] = []
+            for appointment in appointments:
+                if appointment.status != Appointment.Status.DONE:
+                    continue
+                # Un rendez-vous honoré sur deux environ laisse un compte rendu.
+                if random.random() > 0.6:
+                    continue
+                practitioner = appointment.practitioner
+                user = appointment.created_by or getattr(practitioner, "user", None)
+                try:
+                    consultation = start_consultation(
+                        clinic=clinic,
+                        patient=appointment.patient,
+                        practitioner=practitioner,
+                        appointment=appointment,
+                        user=user,
+                    )
+                except ValidationError:
+                    continue
+
+                consultation.started_at = appointment.start_at
+                consultation.ended_at = appointment.end_at
+                consultation.chief_complaint = (
+                    appointment.reason or consultation.chief_complaint
+                )
+                consultation.history = random.choice(HISTORY_POOL)
+                consultation.examination = random.choice(EXAMINATION_POOL)
+                consultation.diagnosis = random.choice(DIAGNOSIS_POOL)
+                consultation.treatment = random.choice(TREATMENT_POOL)
+                consultation.temperature_c = round(random.uniform(36.2, 38.4), 1)
+                consultation.systolic = random.randint(105, 150)
+                consultation.diastolic = random.randint(65, 95)
+                consultation.heart_rate = random.randint(58, 98)
+                consultation.oxygen_saturation = random.randint(95, 100)
+                consultation.weight_kg = round(random.uniform(45, 105), 1)
+                consultation.height_cm = random.randint(150, 195)
+                consultation.follow_up_date = appointment.start_at.date() + timedelta(
+                    days=random.choice([7, 15, 30])
+                )
+                try:
+                    consultation.full_clean()
+                except ValidationError:
+                    continue
+                consultation.save()
+                complete_consultation(consultation, user=user)
+                created.append(consultation)
+
+                if random.random() < 0.55:
+                    try:
+                        add_prescription(
+                            consultation,
+                            items=random.sample(PRESCRIPTION_POOL, random.randint(1, 3)),
+                            user=user,
+                        )
+                    except ValidationError:
+                        pass
+
+            self.stdout.write(
+                f"  {len(created)} consultations clôturées créées."
+                if created
+                else "  aucune consultation créée."
+            )
+            return created
+
+    def _create_medical_records(self, clinic, patients, consultations) -> None:
+        """Dossiers médicaux, documents scannés et un partage de démonstration."""
+        if not patients:
+            return
+
+        with clinic_context(clinic):
+            if MedicalRecord.all_objects.filter(clinic=clinic).exists():
+                self.stdout.write(
+                    "  Dossiers médicaux déjà présents : génération ignorée."
+                )
+                return
+
+            reviewer_of = {}
+            for consultation in consultations:
+                reviewer_of.setdefault(consultation.patient_id, consultation.practitioner)
+
+            records = []
+            for patient in patients:
+                record = ensure_record(patient)
+                record.family_history = random.choice(
+                    [
+                        "Pas d'antécédent familial notable.",
+                        "Père hypertendu, mère diabétique.",
+                        "Antécédents cardiovasculaires maternels.",
+                    ]
+                )
+                record.medical_history = patient.chronic_conditions or random.choice(
+                    [
+                        "Aucun antécédent médical marquant.",
+                        "Asthme léger intermittent.",
+                        "Dyslipidémie non traitée.",
+                    ]
+                )
+                record.surgical_history = random.choice(
+                    [
+                        "Aucune intervention chirurgicale.",
+                        "Appendicectomie (2015).",
+                        "Cholécystectomie (2019).",
+                    ]
+                )
+                record.gynecological_history = (
+                    random.choice(
+                        [
+                            "Grossesses : 2, accouchements : 2.",
+                            "Aucun antécédent gynéco-obstétrique.",
+                        ]
+                    )
+                    if patient.gender == "F"
+                    else ""
+                )
+                record.vaccinations = (
+                    "Calendrier vaccinal national complet, rappel antitétanique à jour."
+                )
+                record.lifestyle = random.choice(
+                    [
+                        "Non fumeur, activité physique régulière.",
+                        "Tabagisme actif (10 cigarettes/jour).",
+                        "Sédentaire, alimentation riche en sel.",
+                    ]
+                )
+                record.disabilities = random.choice(["", "", "Port de lunettes."])
+                reviewer = reviewer_of.get(patient.id)
+                if reviewer is not None:
+                    record.reviewed_by = reviewer
+                    record.last_reviewed_at = timezone.now()
+                record.save()
+                records.append(record)
+
+            doctors = list(
+                {c.practitioner.user for c in consultations if c.practitioner_id}
+            )
+
+            documents_created = 0
+            for record in random.sample(records, min(len(records), 14)):
+                for _ in range(random.randint(1, 2)):
+                    category, title = random.choice(DOCUMENT_POOL)
+                    try:
+                        add_document(
+                            record,
+                            category=category,
+                            title=title,
+                            file=ContentFile(
+                                base64.b64decode(DEMO_PNG_BASE64),
+                                name=f"{category.lower()}-{record.id}-"
+                                f"{random.randint(1000, 9999)}.png",
+                            ),
+                            document_date=timezone.localdate()
+                            - timedelta(days=random.randint(1, 240)),
+                            description="Pièce de démonstration générée par seed_demo.",
+                            user=random.choice(doctors) if doctors else None,
+                        )
+                        documents_created += 1
+                    except ValidationError:
+                        continue
+
+            if records:
+                try:
+                    create_share(
+                        records[0],
+                        days=7,
+                        shared_with="Dr Ahmed (confrère cardiologue)",
+                        note="Transmission pour avis spécialisé.",
+                        user=random.choice(doctors) if doctors else None,
+                    )
+                except ValidationError:
+                    pass
+
+            self.stdout.write(
+                f"  {len(records)} dossiers médicaux créés, "
+                f"{documents_created} documents joints."
+            )
 
     def _create_patients(self, clinic, staff, count: int) -> list[Patient]:
         """Dossiers patients réalistes : identité, couverture, repères médicaux."""

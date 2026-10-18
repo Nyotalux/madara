@@ -1,0 +1,3 @@
+{% load i18n %}
+{# Pastille de statut : {% include "consultations/_badge.html" with consultation=consultation %} #}
+<span class="badge {{ consultation.status_css }}">{{ consultation.get_status_display }}</span>

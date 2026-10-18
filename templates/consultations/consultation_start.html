@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Démarrer une consultation" %} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Démarrer une consultation" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Démarrer une consultation" %}</h1>
+        {% if appointment %}
+            <p class="muted">
+                {{ appointment.patient.display_name }} — {{ appointment.display_date }}
+                {{ appointment.display_time }} · {{ appointment.practitioner_name }}
+            </p>
+        {% else %}
+            <p class="muted">{% translate "Ouverture d'une consultation sans rendez-vous préalable." %}</p>
+        {% endif %}
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</div>
+
+{% if form.non_field_errors %}
+    <div class="alert alert--error">
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+{% endif %}
+
+{% if appointment and appointment.status != "IN_PROGRESS" %}
+    <div class="alert">
+        {% blocktranslate with status=appointment.get_status_display %}Le rendez-vous est « {{ status }} » ; il passera « en consultation » au démarrage.{% endblocktranslate %}
+    </div>
+{% endif %}
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    <fieldset>
+        <legend>{% translate "Patient et praticien" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.patient %}
+            {% include "includes/field.html" with field=form.practitioner %}
+        </div>
+    </fieldset>
+    <fieldset>
+        <legend>{% translate "Motif" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.kind %}
+            {% include "includes/field.html" with field=form.chief_complaint %}
+        </div>
+    </fieldset>
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Démarrer" %}</button>
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}

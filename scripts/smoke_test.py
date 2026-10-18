@@ -1,7 +1,8 @@
-"""Test de fumée HTTP de bout en bout (jalons 1 à 3).
+"""Test de fumée HTTP de bout en bout (jalons 1 à 4).
 
 Vérifie la connexion web, le cloisonnement multi-cliniques, les permissions par
-rôle, le parcours dossier patient (web + API) et l'agenda des rendez-vous
+rôle, le parcours dossier patient (web + API), l'agenda des rendez-vous
+(web + API), puis les consultations, ordonnances et dossiers médicaux
 (web + API), en parlant au serveur.
 
     python manage.py runserver 8765        # dans un terminal
@@ -335,6 +336,57 @@ def run(base: str, password: str) -> int:
         status, _ = accountant.get(patient_links[0])
         report.check("comptabilité : fiche patient interdite", status == 403, str(status))
 
+    # --- Consultations et dossier médical (web, jalon 4) ---------------------
+    status, body = doctor.get("/consultations/")
+    report.check(
+        "menu Consultations cliquable", 'href="/consultations/"' in body, str(status)
+    )
+    report.check(
+        "liste des consultations", status == 200 and "Consultations" in body, str(status)
+    )
+    status, _ = doctor.get("/consultations/nouveau/")
+    report.check("formulaire de consultation libre", status == 200, str(status))
+
+    if doctor_appointments:
+        # L'accueil n'écrit pas d'acte médical : démarrage refusé (403).
+        status, _ = reception.get(f"{doctor_appointments[0]}consultation/")
+        report.check(
+            "accueil : démarrage de consultation interdit", status == 403, str(status)
+        )
+        status, _ = doctor.get(doctor_appointments[0])
+        report.check("fiche de rendez-vous (médecin)", status == 200, str(status))
+
+    if patient_links:
+        status, body = doctor.get(patient_links[0])
+        report.check(
+            "lien « Dossier médical » sur la fiche patient",
+            f"{patient_links[0]}dossier/" in body,
+        )
+        record_url = f"{patient_links[0]}dossier/"
+        status, body = doctor.get(record_url)
+        report.check(
+            "dossier médical du patient",
+            status == 200 and "Antécédents familiaux" in body and "Partages" in body,
+            record_url,
+        )
+        report.check(
+            "référence du dossier médical",
+            status == 200 and re.search(r"DM-\d{4}-\d{5}", body) is not None,
+        )
+        status, _ = doctor.get(f"{patient_links[0]}dossier/modifier/")
+        report.check("édition des antécédents", status == 200, str(status))
+        status, _ = doctor.get(f"{patient_links[0]}dossier/document/")
+        report.check("dépôt d'un document", status == 200, str(status))
+        status, _ = doctor.get(f"{patient_links[0]}dossier/partage/")
+        report.check("formulaire de partage", status == 200, str(status))
+        status, _ = accountant.get(f"{patient_links[0]}dossier/")
+        report.check(
+            "comptabilité : dossier médical interdit", status == 403, str(status)
+        )
+
+    status, _ = accountant.get("/consultations/")
+    report.check("comptabilité : consultations interdites", status == 403, str(status))
+
     # --- Archivage / restauration (administrateur de clinique) -----------
     if patient_links:
         status, _ = admin.get(f"{patient_links[0]}archiver/")
@@ -629,6 +681,47 @@ def run(base: str, password: str) -> int:
         )
         report.check(
             "API X-Clinic hors clinique autorisée refusé", status == 404, str(status)
+        )
+
+    # --- API consultations et dossier médical (jalon 4) ---------------------
+    if token:
+        status, body = anon.api("/api/v1/consultations/", token=token)
+        report.check("API liste des consultations", status == 200, str(status))
+        report.check(
+            "API consultations cloisonnées",
+            status == 200 and "results" in json.loads(body),
+        )
+        status, body = anon.api("/api/v1/prescriptions/", token=token)
+        report.check("API liste des ordonnances", status == 200, str(status))
+        status, body = anon.api("/api/v1/medical-records/", token=token)
+        report.check("API liste des dossiers médicaux", status == 200, str(status))
+        report.check(
+            "API dossier médical enrichi",
+            status == 200 and "document_count" in json.loads(body)["results"][0],
+        )
+        status, body = anon.api("/api/v1/medical-documents/", token=token)
+        report.check("API liste des documents", status == 200, str(status))
+        status, body = anon.api("/api/v1/medical-shares/", token=token)
+        report.check("API liste des partages", status == 200, str(status))
+
+    if reception_token:
+        status, _ = anon.api(
+            "/api/v1/consultations/",
+            payload={"patient": 1, "practitioner": 1},
+            token=reception_token,
+        )
+        report.check(
+            "API accueil : création de consultation refusée", status == 403, str(status)
+        )
+
+    if accountant_token:
+        status, _ = anon.api("/api/v1/consultations/", token=accountant_token)
+        report.check(
+            "API comptabilité : consultations refusées", status == 403, str(status)
+        )
+        status, _ = anon.api("/api/v1/medical-records/", token=accountant_token)
+        report.check(
+            "API comptabilité : dossiers médicaux refusés", status == 403, str(status)
         )
 
     print()

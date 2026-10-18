@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ consultation.reference }} — {{ app_name }}{% endblock %}
+{% block page_title %}Consultation {{ consultation.reference }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ consultation.patient.display_name }}</h1>
+        <p class="muted">
+            <span class="mono">{{ consultation.reference }}</span>
+            · {{ consultation.started_at|date:"d/m/Y H:i" }}
+            {% if consultation.ended_at %} → {{ consultation.ended_at|date:"H:i" }} ({{ consultation.duration_minutes }} min){% endif %}
+            · {% include "consultations/_badge.html" with consultation=consultation %}
+        </p>
+    </div>
+    <div class="page-header__actions">
+        {% if consultation.appointment %}
+            <a class="btn btn--ghost" href="{% url 'web:appointment-detail' consultation.appointment.pk %}">{% translate "Voir le rendez-vous" %}</a>
+        {% endif %}
+        {% if can_write %}
+            <a class="btn" href="{% url 'web:consultation-edit' consultation.pk %}">{% translate "Modifier le compte rendu" %}</a>
+        {% endif %}
+        {% if can_write and consultation.status != "CANCELLED" %}
+            <a class="btn btn--primary" href="{% url 'web:prescription-create' consultation.pk %}">{% translate "Prescrire" %}</a>
+        {% endif %}
+    </div>
+</div>
+
+<div class="detail-grid">
+    <div>
+        <section class="card">
+            <div class="card__header">
+                <h2>{% translate "Compte rendu" %}</h2>
+                <span class="muted small">{{ consultation.kind_label }}</span>
+            </div>
+            <dl class="details">
+                <dt>{% translate "Motif" %}</dt>
+                <dd>{{ consultation.chief_complaint|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Antécédents / anamnèse" %}</dt>
+                <dd>{{ consultation.history|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Examen clinique" %}</dt>
+                <dd>{{ consultation.examination|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Diagnostic" %}</dt>
+                <dd>{{ consultation.diagnosis|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Conduite à tenir" %}</dt>
+                <dd>{{ consultation.treatment|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Revoir le" %}</dt>
+                <dd>{{ consultation.follow_up_date|date:"d/m/Y"|default:"—" }}</dd>
+                <dt>{% translate "Notes" %}</dt>
+                <dd>{{ consultation.notes|default:"—"|linebreaksbr }}</dd>
+            </dl>
+        </section>
+
+        <section class="card">
+            <div class="card__header">
+                <h2>{% translate "Ordonnances" %}</h2>
+                {% if can_write and consultation.status != "CANCELLED" %}
+                    <a class="btn btn--small" href="{% url 'web:prescription-create' consultation.pk %}">{% translate "Ajouter" %}</a>
+                {% endif %}
+            </div>
+            {% if prescriptions %}
+                {% for prescription in prescriptions %}
+                    <div class="details">
+                        <p>
+                            <strong class="mono">{{ prescription.reference }}</strong>
+                            — {{ prescription.issued_at|date:"d/m/Y" }}
+                            <span class="muted small">({{ prescription.item_count }} {% translate "ligne(s)" %})</span>
+                            <a class="btn btn--ghost btn--sm" href="{% url 'web:prescription-print' prescription.pk %}" target="_blank" rel="noopener">{% translate "Imprimer" %}</a>
+                        </p>
+                        <ul class="list">
+                            {% for item in prescription.items.all %}
+                                <li class="list__item">
+                                    <span><strong>{{ item.medication }}</strong></span>
+                                    <span class="muted">{{ item.dosage }}{% if item.frequency %} · {{ item.frequency }}{% endif %}{% if item.duration %} · {{ item.duration }}{% endif %}</span>
+                                    {% if item.instructions %}<span class="muted small">{{ item.instructions }}</span>{% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="empty">{% translate "Aucune ordonnance." %}</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <div>
+        <section class="card">
+            <div class="card__header"><h2>{% translate "Constantes" %}</h2></div>
+            {% if vitals %}
+                <dl class="details">
+                    {% for vital in vitals %}
+                        <dt>{{ vital.label }}</dt>
+                        <dd>{{ vital.value }}</dd>
+                    {% endfor %}
+                </dl>
+            {% else %}
+                <p class="empty">{% translate "Aucune constante relevée." %}</p>
+            {% endif %}
+        </section>
+
+        <section class="card">
+            <div class="card__header"><h2>{% translate "Suivi" %}</h2></div>
+            <dl class="details">
+                <dt>{% translate "Patient" %}</dt>
+                <dd><a href="{% url 'web:patient-detail' consultation.patient.pk %}">{{ consultation.patient.display_name }}</a></dd>
+                <dt>{% translate "Praticien" %}</dt>
+                <dd>{{ consultation.practitioner_name }}</dd>
+                <dt>{% translate "Créée le" %}</dt>
+                <dd>{{ consultation.created_at|date:"d/m/Y H:i" }}{% if consultation.created_by %} — {{ consultation.created_by.full_name }}{% endif %}</dd>
+            </dl>
+            {% if can_complete or can_cancel %}
+                <div class="quick-actions">
+                    {% if can_complete %}
+                        <form method="post" action="{% url 'web:consultation-complete' consultation.pk %}">
+                            {% csrf_token %}
+                            <button class="btn btn--primary btn--small" type="submit">{% translate "Terminer la consultation" %}</button>
+                        </form>
+                    {% endif %}
+                    {% if can_cancel %}
+                        <a class="btn btn--ghost btn--small" href="{% url 'web:consultation-cancel' consultation.pk %}">{% translate "Annuler" %}</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

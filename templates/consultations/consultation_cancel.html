@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Annuler la consultation" %} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Annuler la consultation" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Annuler la consultation" %}</h1>
+        <p class="muted">
+            {{ consultation.patient.display_name }} — <span class="mono">{{ consultation.reference }}</span>
+            · {{ consultation.started_at|date:"d/m/Y H:i" }}
+            · {% include "consultations/_badge.html" with consultation=consultation %}
+        </p>
+    </div>
+</div>
+
+{% if form.non_field_errors %}
+    <div class="alert alert--error">
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+{% endif %}
+
+<div class="alert">
+    {% translate "La consultation reste dans l'historique du patient, mais elle est marquée comme annulée et ne peut plus être modifiée." %}
+</div>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    <fieldset>
+        <legend>{% translate "Motif de l'annulation" %}</legend>
+        {% include "includes/field.html" with field=form.reason %}
+        <p class="field__help">{% translate "Ex. : patient parti, erreur de saisie, acte non réalisé…" %}</p>
+    </fieldset>
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Annuler la consultation" %}</button>
+        <a class="btn" href="{% url 'web:consultation-detail' consultation.pk %}">{% translate "Retour" %}</a>
+    </div>
+</form>
+{% endblock %}

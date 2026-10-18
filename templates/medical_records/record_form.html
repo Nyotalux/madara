@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Antécédents" %} — {{ patient.display_name }} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Antécédents médicaux" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Antécédents médicaux" %}</h1>
+        <p class="muted">
+            {{ patient.display_name }} — <span class="mono">{{ patient.reference }}</span>
+            {% if record.reference %}· <span class="mono">{{ record.reference }}</span>{% endif %}
+        </p>
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</div>
+
+{% if form.non_field_errors %}
+    <div class="alert alert--error">
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+{% endif %}
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    <fieldset>
+        <legend>{% translate "Antécédents" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.family_history %}
+            {% include "includes/field.html" with field=form.medical_history %}
+            {% include "includes/field.html" with field=form.surgical_history %}
+            {% include "includes/field.html" with field=form.gynecological_history %}
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Prévention et mode de vie" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.vaccinations %}
+            {% include "includes/field.html" with field=form.lifestyle %}
+            {% include "includes/field.html" with field=form.disabilities %}
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Notes" %}</legend>
+        {% include "includes/field.html" with field=form.notes %}
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Enregistrer" %}</button>
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}

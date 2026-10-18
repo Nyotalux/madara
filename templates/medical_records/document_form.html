@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Ajouter un document" %} — {{ patient.display_name }} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Ajouter un document" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Ajouter un document" %}</h1>
+        <p class="muted">
+            {{ patient.display_name }} — <span class="mono">{{ patient.reference }}</span>
+            {% if record.reference %}· <span class="mono">{{ record.reference }}</span>{% endif %}
+        </p>
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</div>
+
+{% if form.non_field_errors %}
+    <div class="alert alert--error">
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data" class="form-card">
+    {% csrf_token %}
+    <fieldset>
+        <legend>{% translate "Pièce jointe" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.category %}
+            {% include "includes/field.html" with field=form.title %}
+            {% include "includes/field.html" with field=form.document_date %}
+            {% include "includes/field.html" with field=form.file %}
+        </div>
+        <p class="field__help">
+            {% translate "Formats acceptés : PDF, JPG, PNG, WEBP, HEIC, DOC, DOCX, TIF." %}
+        </p>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Description" %}</legend>
+        {% include "includes/field.html" with field=form.description %}
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Ajouter au dossier" %}</button>
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}

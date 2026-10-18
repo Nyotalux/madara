@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Dossier médical partagé" %} — {{ patient.display_name }}{% endblock %}
+
+{% block content %}
+<div class="alert">
+    {% blocktranslate with clinic=clinic.name date=share.expires_at|date:"d/m/Y H:i" %}Accès en lecture seule au dossier médical partagé par {{ clinic }}. Ce lien expire le {{ date }}.{% endblocktranslate %}
+</div>
+
+<article class="card print-sheet">
+    <header class="card__header">
+        <div>
+            <h1>{{ patient.display_name }}</h1>
+            <p class="muted small">
+                {% if record.reference %}<span class="mono">{{ record.reference }}</span> · {% endif %}
+                {{ patient.age_label }}
+                {% if patient.gender %}· {{ patient.get_gender_display }}{% endif %}
+                {% if patient.birth_date %}· {% translate "né(e) le" %} {{ patient.birth_date|date:"d/m/Y" }}{% endif %}
+            </p>
+        </div>
+        <div class="muted small">
+            {% if share.shared_with %}{% translate "Destiné à" %} {{ share.shared_with }}<br>{% endif %}
+            <span class="badge {{ share.status_css }}">{{ share.status_label }}</span>
+        </div>
+    </header>
+
+    {% if patient.has_medical_flags %}
+        <div class="alert alert--error">
+            <strong>{% translate "Point d'attention" %}</strong>
+            {% if patient.allergies %}<div>{% translate "Allergies" %} : {{ patient.allergies }}</div>{% endif %}
+            {% if patient.chronic_conditions %}<div>{% translate "Maladies chroniques" %} : {{ patient.chronic_conditions }}</div>{% endif %}
+            {% if patient.current_medication %}<div>{% translate "Traitement en cours" %} : {{ patient.current_medication }}</div>{% endif %}
+        </div>
+    {% endif %}
+
+    <h2>{% translate "Antécédents" %}</h2>
+    <dl class="details">
+        <dt>{% translate "Antécédents familiaux" %}</dt>
+        <dd>{{ record.family_history|default:"—"|linebreaksbr }}</dd>
+        <dt>{% translate "Antécédents médicaux" %}</dt>
+        <dd>{{ record.medical_history|default:"—"|linebreaksbr }}</dd>
+        <dt>{% translate "Antécédents chirurgicaux" %}</dt>
+        <dd>{{ record.surgical_history|default:"—"|linebreaksbr }}</dd>
+        <dt>{% translate "Antécédents gynéco-obstétriques" %}</dt>
+        <dd>{{ record.gynecological_history|default:"—"|linebreaksbr }}</dd>
+        <dt>{% translate "Vaccinations" %}</dt>
+        <dd>{{ record.vaccinations|default:"—"|linebreaksbr }}</dd>
+        <dt>{% translate "Mode de vie" %}</dt>
+        <dd>{{ record.lifestyle|default:"—"|linebreaksbr }}</dd>
+        <dt>{% translate "Handicaps et particularités" %}</dt>
+        <dd>{{ record.disabilities|default:"—"|linebreaksbr }}</dd>
+        <dt>{% translate "Notes" %}</dt>
+        <dd>{{ record.notes|default:"—"|linebreaksbr }}</dd>
+    </dl>
+
+    <h2>{% translate "Documents" %}</h2>
+    {% if documents %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>{% translate "Catégorie" %}</th>
+                    <th>{% translate "Intitulé" %}</th>
+                    <th>{% translate "Date" %}</th>
+                    <th>{% translate "Fichier" %}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for document in documents %}
+                    <tr>
+                        <td><span class="badge {{ document.category_css }}">{{ document.get_category_display }}</span></td>
+                        <td>{{ document.title }}</td>
+                        <td>{{ document.document_date|date:"d/m/Y"|default:"—" }}</td>
+                        <td>
+                            <a class="mono small" href="/{{ media_url }}{{ document.file.name }}" target="_blank" rel="noopener">
+                                {{ document.filename|default:"—" }}
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="empty">{% translate "Aucun document dans le dossier." %}</p>
+    {% endif %}
+
+    {% if share.note %}
+        <p class="muted small">{% translate "Note" %} : {{ share.note }}</p>
+    {% endif %}
+
+    <p class="muted small">
+        {% translate "Dossier revu le" %}
+        {% if record.last_reviewed_at %}{{ record.last_reviewed_at|date:"d/m/Y" }}{% else %}—{% endif %}
+    </p>
+</article>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Retirer un document" %} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Retirer un document" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Retirer un document" %}</h1>
+        <p class="muted">
+            {{ document.record.patient.display_name }} —
+            <span class="badge {{ document.category_css }}">{{ document.get_category_display }}</span>
+            {{ document.title }}
+        </p>
+    </div>
+</div>
+
+<div class="alert alert--error">
+    {% translate "Le document ne sera pas supprimé du stockage : il sera simplement retiré du dossier médical." %}
+</div>
+
+<dl class="details">
+    <dt>{% translate "Intitulé" %}</dt>
+    <dd>{{ document.title }}</dd>
+    <dt>{% translate "Catégorie" %}</dt>
+    <dd>{{ document.get_category_display }}</dd>
+    <dt>{% translate "Date du document" %}</dt>
+    <dd>{{ document.document_date|date:"d/m/Y"|default:"—" }}</dd>
+    <dt>{% translate "Fichier" %}</dt>
+    <dd class="mono small">{{ document.filename|default:"—" }}</dd>
+</dl>
+
+<form method="post" class="form-actions">
+    {% csrf_token %}
+    <button type="submit" class="btn btn--primary">{% translate "Retirer du dossier" %}</button>
+    <a class="btn" href="{% url 'web:medical-record' patient_id %}">{% translate "Annuler" %}</a>
+</form>
+{% endblock %}

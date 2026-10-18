@@ -29,6 +29,13 @@
                         <span class="mono">{{ appointment.display_time }}</span>
                         <a href="{% url 'web:appointment-detail' appointment.pk %}">{{ appointment.patient.display_name }}</a>
                         <span class="muted">{{ appointment.practitioner_name }}</span>
+                        {% if can_start_consultation %}
+                            {% if appointment.consultation %}
+                                <a class="btn btn--small btn--primary" href="{% url 'web:consultation-detail' appointment.consultation.pk %}">{% translate "Ouvrir la consultation" %}</a>
+                            {% else %}
+                                <a class="btn btn--small btn--primary" href="{% url 'web:consultation-start' appointment.pk %}">{% translate "Démarrer la consultation" %}</a>
+                            {% endif %}
+                        {% endif %}
                         <form method="post" action="{% url 'web:appointment-quick-status' appointment.pk 'DONE' %}">
                             {% csrf_token %}
                             <button class="btn btn--small" type="submit">{% translate "Terminer" %}</button>
@@ -53,10 +60,14 @@
                         <span class="mono">{{ appointment.display_time }}</span>
                         <a href="{% url 'web:appointment-detail' appointment.pk %}">{{ appointment.patient.display_name }}</a>
                         <span class="muted">{{ appointment.practitioner_name }}</span>
-                        <form method="post" action="{% url 'web:appointment-quick-status' appointment.pk 'IN_PROGRESS' %}">
-                            {% csrf_token %}
-                            <button class="btn btn--small" type="submit">{% translate "Débuter" %}</button>
-                        </form>
+                        {% if can_start_consultation %}
+                            <a class="btn btn--small btn--primary" href="{% url 'web:consultation-start' appointment.pk %}">{% translate "Démarrer la consultation" %}</a>
+                        {% else %}
+                            <form method="post" action="{% url 'web:appointment-quick-status' appointment.pk 'IN_PROGRESS' %}">
+                                {% csrf_token %}
+                                <button class="btn btn--small" type="submit">{% translate "Débuter" %}</button>
+                            </form>
+                        {% endif %}
                     </li>
                 {% endfor %}
             </ul>

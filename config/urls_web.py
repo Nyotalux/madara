@@ -20,8 +20,10 @@ urlpatterns = [
     path("", include("apps.patients.urls_web")),
     # --- Agenda et rendez-vous (jalon 3)
     path("", include("apps.appointments.urls_web")),
-    # path("", include("apps.consultations.urls_web")),
-    # path("", include("apps.medical_records.urls_web")),
+    # --- Consultations et ordonnances (jalon 4)
+    path("", include("apps.consultations.urls_web")),
+    # --- Dossier médical (jalon 4)
+    path("", include("apps.medical_records.urls_web")),
     # path("", include("apps.billing.urls_web")),
     # path("", include("apps.inventory.urls_web")),
     # path("", include("apps.payroll.urls_web")),

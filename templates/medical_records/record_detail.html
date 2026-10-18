@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Dossier médical" %} — {{ patient.display_name }} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Dossier médical" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Dossier médical" %}</h1>
+        <p class="muted">
+            <a href="{% url 'web:patient-detail' patient.pk %}">{{ patient.display_name }}</a>
+            · <span class="mono">{{ patient.reference }}</span>
+            {% if record.reference %}· <span class="mono">{{ record.reference }}</span>{% endif %}
+            · {{ patient.age_label }}
+        </p>
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{% url 'web:patient-detail' patient.pk %}">{% translate "Fiche patient" %}</a>
+        {% if can_write %}
+            <a class="btn" href="{% url 'web:medical-record-edit' patient.pk %}">{% translate "Modifier les antécédents" %}</a>
+            <a class="btn" href="{% url 'web:medical-document-add' patient.pk %}">{% translate "Ajouter un document" %}</a>
+            <a class="btn btn--primary" href="{% url 'web:medical-record-share' patient.pk %}">{% translate "Partager" %}</a>
+        {% endif %}
+    </div>
+</div>
+
+{% if patient.has_medical_flags %}
+    <div class="alert alert--error">
+        <strong>{% translate "Point d'attention" %}</strong>
+        {% if patient.allergies %}<div>{% translate "Allergies" %} : {{ patient.allergies }}</div>{% endif %}
+        {% if patient.chronic_conditions %}<div>{% translate "Maladies chroniques" %} : {{ patient.chronic_conditions }}</div>{% endif %}
+        {% if patient.current_medication %}<div>{% translate "Traitement en cours" %} : {{ patient.current_medication }}</div>{% endif %}
+    </div>
+{% endif %}
+
+<div class="detail-grid">
+    <div>
+        <section class="card">
+            <div class="card__header">
+                <h2>{% translate "Antécédents" %}</h2>
+                <span class="muted small">
+                    {% if record.last_reviewed_at %}
+                        {% translate "Revu le" %} {{ record.last_reviewed_at|date:"d/m/Y" }}
+                        {% if record.reviewed_by %}— {{ record.reviewed_by.user.full_name }}{% endif %}
+                    {% else %}
+                        {% translate "Jamais revu" %}
+                    {% endif %}
+                </span>
+            </div>
+            <dl class="details">
+                <dt>{% translate "Antécédents familiaux" %}</dt>
+                <dd>{{ record.family_history|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Antécédents médicaux" %}</dt>
+                <dd>{{ record.medical_history|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Antécédents chirurgicaux" %}</dt>
+                <dd>{{ record.surgical_history|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Antécédents gynéco-obstétriques" %}</dt>
+                <dd>{{ record.gynecological_history|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Vaccinations" %}</dt>
+                <dd>{{ record.vaccinations|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Mode de vie" %}</dt>
+                <dd>{{ record.lifestyle|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Handicaps et particularités" %}</dt>
+                <dd>{{ record.disabilities|default:"—"|linebreaksbr }}</dd>
+                <dt>{% translate "Notes" %}</dt>
+                <dd>{{ record.notes|default:"—"|linebreaksbr }}</dd>
+            </dl>
+        </section>
+
+        <section class="card">
+            <div class="card__header">
+                <h2>{% translate "Documents" %}</h2>
+                {% if can_write %}
+                    <a class="btn btn--small" href="{% url 'web:medical-document-add' patient.pk %}">{% translate "Ajouter" %}</a>
+                {% endif %}
+            </div>
+            {% if documents %}
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>{% translate "Catégorie" %}</th>
+                            <th>{% translate "Intitulé" %}</th>
+                            <th>{% translate "Date" %}</th>
+                            <th>{% translate "Fichier" %}</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for document in documents %}
+                            <tr>
+                                <td><span class="badge {{ document.category_css }}">{{ document.get_category_display }}</span></td>
+                                <td>
+                                    {{ document.title }}
+                                    {% if document.description %}<div class="muted small">{{ document.description|truncatechars:80 }}</div>{% endif %}
+                                </td>
+                                <td>{{ document.document_date|date:"d/m/Y"|default:"—" }}</td>
+                                <td>
+                                    <a class="mono small" href="/{{ media_url }}{{ document.file.name }}" target="_blank" rel="noopener">
+                                        {{ document.filename|default:"—" }}
+                                    </a>
+                                </td>
+                                <td class="table__actions">
+                                    {% if can_write %}
+                                        <a class="btn btn--ghost btn--sm" href="{% url 'web:medical-document-delete' document.pk %}">{% translate "Retirer" %}</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty">{% translate "Aucun document dans le dossier." %}</p>
+            {% endif %}
+        </section>
+    </div>
+
+    <div>
+        <section class="card">
+            <div class="card__header">
+                <h2>{% translate "Partages" %}</h2>
+                {% if can_write %}
+                    <a class="btn btn--small" href="{% url 'web:medical-record-share' patient.pk %}">{% translate "Nouveau partage" %}</a>
+                {% endif %}
+            </div>
+            {% if shares %}
+                <ul class="list">
+                    {% for share in shares %}
+                        <li class="list__item">
+                            <span>
+                                <span class="badge {{ share.status_css }}">{{ share.status_label }}</span>
+                                {{ share.shared_with|default:_("Destinataire non précisé") }}
+                            </span>
+                            <span class="muted small">
+                                {% translate "expire le" %} {{ share.expires_at|date:"d/m/Y H:i" }}
+                                {% if share.note %}· {{ share.note }}{% endif %}
+                            </span>
+                            <span>
+                                {% if share.is_valid %}
+                                    <a class="mono small" href="{% url 'web:medical-record-shared' share.token %}" target="_blank" rel="noopener">
+                                        {% translate "Ouvrir le lien" %}
+                                    </a>
+                                    {% if can_write %}
+                                        <a class="btn btn--ghost btn--sm" href="{% url 'web:medical-record-share-revoke' share.pk %}">{% translate "Révoquer" %}</a>
+                                    {% endif %}
+                                {% endif %}
+                            </span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty">{% translate "Aucun partage pour ce dossier." %}</p>
+            {% endif %}
+        </section>
+
+        <section class="card">
+            <div class="card__header"><h2>{% translate "Consultations" %}</h2></div>
+            {% with consultations=patient.consultations.all %}
+                {% if consultations %}
+                    <ul class="list">
+                        {% for consultation in consultations|slice:":8" %}
+                            <li class="list__item">
+                                <a href="{% url 'web:consultation-detail' consultation.pk %}">
+                                    {{ consultation.display_date }} — {{ consultation.kind_label }}
+                                </a>
+                                <span class="muted small">{{ consultation.practitioner_name }}</span>
+                                {% include "consultations/_badge.html" with consultation=consultation %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <p class="form-actions">
+                        <a class="btn btn--ghost btn--sm" href="{% url 'web:consultation-list' %}?q={{ patient.reference }}">{% translate "Toutes les consultations" %}</a>
+                    </p>
+                {% else %}
+                    <p class="empty">{% translate "Aucune consultation enregistrée." %}</p>
+                {% endif %}
+            {% endwith %}
+        </section>
+
+        <section class="card">
+            <div class="card__header"><h2>{% translate "Suivi du dossier" %}</h2></div>
+            <dl class="details">
+                <dt>{% translate "Référence" %}</dt>
+                <dd class="mono">{{ record.reference|default:"—" }}</dd>
+                <dt>{% translate "Créé le" %}</dt>
+                <dd>{{ record.created_at|date:"d/m/Y H:i" }}{% if record.created_by %} — {{ record.created_by.full_name }}{% endif %}</dd>
+                <dt>{% translate "Modifié le" %}</dt>
+                <dd>{{ record.updated_at|date:"d/m/Y H:i" }}</dd>
+            </dl>
+        </section>
+    </div>
+</div>
+{% endblock %}

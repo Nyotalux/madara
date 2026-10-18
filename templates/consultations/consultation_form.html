@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+    {% if consultation %}{% translate "Modifier le compte rendu" %}{% else %}{% translate "Nouvelle consultation" %}{% endif %} — {{ app_name }}
+{% endblock %}
+{% block page_title %}{% translate "Compte rendu de consultation" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Compte rendu de consultation" %}</h1>
+        {% if consultation %}
+            <p class="muted">
+                {{ consultation.patient.display_name }} — {{ consultation.reference }}
+                · {{ consultation.started_at|date:"d/m/Y H:i" }}
+            </p>
+        {% endif %}
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</div>
+
+{% if form.non_field_errors %}
+    <div class="alert alert--error">
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+{% endif %}
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    <fieldset>
+        <legend>{% translate "Motif et type" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.kind %}
+            {% include "includes/field.html" with field=form.chief_complaint %}
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Examen" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.history %}
+            {% include "includes/field.html" with field=form.examination %}
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Constantes" %}</legend>
+        <div class="form-grid form-grid--3">
+            {% include "includes/field.html" with field=form.temperature_c %}
+            {% include "includes/field.html" with field=form.systolic %}
+            {% include "includes/field.html" with field=form.diastolic %}
+            {% include "includes/field.html" with field=form.heart_rate %}
+            {% include "includes/field.html" with field=form.respiratory_rate %}
+            {% include "includes/field.html" with field=form.oxygen_saturation %}
+            {% include "includes/field.html" with field=form.blood_glucose %}
+            {% include "includes/field.html" with field=form.weight_kg %}
+            {% include "includes/field.html" with field=form.height_cm %}
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Conclusion" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.diagnosis %}
+            {% include "includes/field.html" with field=form.treatment %}
+            {% include "includes/field.html" with field=form.follow_up_date %}
+            {% include "includes/field.html" with field=form.notes %}
+        </div>
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Enregistrer" %}</button>
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}

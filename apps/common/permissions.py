@@ -109,6 +109,23 @@ class CanWriteClinicalData(CanReadClinicalData):
     message = "Modification des données cliniques réservée au personnel soignant."
 
 
+class CanWriteMedicalData(permissions.BasePermission):
+    """Rédaction des actes médicaux : médecin, infirmier et administrateur.
+
+    Plus restrictif que ``CanWriteClinicalData`` : l'accueil gère les dossiers
+    et l'agenda, mais ne rédige pas de consultation ni d'ordonnance.
+    """
+
+    message = "Rédaction des actes médicaux réservée au personnel soignant."
+    allowed_roles = ("DOCTOR", "NURSE", "ADMIN")
+
+    def has_permission(self, request, view):
+        user = request.user
+        if user and user.is_authenticated and user.is_platform_staff:
+            return True
+        return _role_of(user) in self.allowed_roles
+
+
 class IsSameClinic(permissions.BasePermission):
     """Vérifie que l'objet appartient à la clinique de la requête."""
 

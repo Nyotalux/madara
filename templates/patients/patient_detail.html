@@ -16,6 +16,7 @@
     </div>
     <div class="form-actions">
         <a class="btn btn--primary" href="{% url 'web:patient-edit' patient.pk %}">{% translate "Modifier" %}</a>
+        <a class="btn" href="{% url 'web:medical-record' patient.pk %}">{% translate "Dossier médical" %}</a>
         <a class="btn btn--ghost" href="{% url 'web:patient-print' patient.pk %}" target="_blank" rel="noopener">{% translate "Fiche imprimable" %}</a>
         <a class="btn btn--ghost" href="{% url 'web:patient-list' %}">{% translate "Retour à la liste" %}</a>
     </div>

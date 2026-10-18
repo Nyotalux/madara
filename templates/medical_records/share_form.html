@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Partager le dossier" %} — {{ patient.display_name }} — {{ app_name }}{% endblock %}
+{% block page_title %}{% translate "Partager le dossier" %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% translate "Partager le dossier" %}</h1>
+        <p class="muted">
+            {{ patient.display_name }} — <span class="mono">{{ patient.reference }}</span>
+            {% if record.reference %}· <span class="mono">{{ record.reference }}</span>{% endif %}
+        </p>
+    </div>
+    <div class="page-header__actions">
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</div>
+
+{% if form.non_field_errors %}
+    <div class="alert alert--error">
+        {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+    </div>
+{% endif %}
+
+<div class="alert">
+    {% blocktranslate with max_days=max_days %}Un lien de partage donne un accès en lecture seule au dossier, sans connexion. Il expire automatiquement (30 jours maximum, ici {{ max_days }} jours) et peut être révoqué à tout moment.{% endblocktranslate %}
+</div>
+
+<form method="post" class="form-card">
+    {% csrf_token %}
+    <fieldset>
+        <legend>{% translate "Destinataire et durée" %}</legend>
+        <div class="form-grid">
+            {% include "includes/field.html" with field=form.shared_with %}
+            {% include "includes/field.html" with field=form.days %}
+        </div>
+        <p class="field__help">{% translate "Durée exprimée en jours, entre 1 et" %} {{ max_days }}.</p>
+    </fieldset>
+
+    <fieldset>
+        <legend>{% translate "Note" %}</legend>
+        {% include "includes/field.html" with field=form.note %}
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Créer le lien de partage" %}</button>
+        <a class="btn" href="{{ cancel_url }}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}
