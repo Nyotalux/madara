@@ -1,0 +1,67 @@
+{% load i18n %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ invoice.reference }} — {{ app_name }}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body class="print-page" onload="window.print()">
+<main class="page">
+    <header class="page__header">
+        <div>
+            <h1>{{ invoice.clinic.name }}</h1>
+            <p class="muted">
+                {{ invoice.clinic.address|default:"" }}
+                {% if invoice.clinic.phone %}· {{ invoice.clinic.phone }}{% endif %}
+                {% if invoice.clinic.email %}· {{ invoice.clinic.email }}{% endif %}
+            </p>
+        </div>
+        <div>
+            <h2>{{ invoice.reference }}</h2>
+            <p class="muted">
+                {% translate "Émise le" %} {{ invoice.issued_at|date:"d/m/Y"|default:"—" }}
+                · {% translate "Échéance" %} {{ invoice.due_at|date:"d/m/Y"|default:"—" }}
+            </p>
+        </div>
+    </header>
+
+    <section class="card">
+        <p><strong>{% translate "Patient" %}</strong> : {{ invoice.patient.display_name }}</p>
+        {% if invoice.patient.phone %}<p class="muted">{{ invoice.patient.phone }}</p>{% endif %}
+        {% if invoice.consultation %}<p class="muted">{% translate "Consultation" %} : {{ invoice.consultation.reference }}</p>{% endif %}
+    </section>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>{% translate "Prestation" %}</th>
+                <th>{% translate "Qté" %}</th>
+                <th>{% translate "Prix unitaire" %}</th>
+                <th>{% translate "Total" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in invoice.lines.all %}
+            <tr>
+                <td>{{ line.label }}</td>
+                <td>{{ line.quantity }}</td>
+                <td>{{ line.unit_price }}</td>
+                <td>{{ line.line_total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr><th colspan="3">{% translate "Total hors taxe" %}</th><td>{{ invoice.amount_excl_tax }}</td></tr>
+            <tr><th colspan="3">{% translate "TVA" %}</th><td>{{ invoice.tax_amount }}</td></tr>
+            <tr><th colspan="3">{% translate "Total à payer" %}</th><td><strong>{{ invoice.total }}</strong></td></tr>
+            <tr><th colspan="3">{% translate "Déjà réglé" %}</th><td>{{ invoice.paid_amount }}</td></tr>
+            <tr><th colspan="3">{% translate "Reste à payer" %}</th><td><strong>{{ invoice.amount_due }}</strong></td></tr>
+        </tfoot>
+    </table>
+
+    <p class="muted">{% translate "Document généré par Madara — gestion de clinique." %}</p>
+    <a class="btn btn--ghost" href="{% url 'web:invoice-detail' invoice.pk %}">{% translate "Retour à la facture" %}</a>
+</main>
+</body>
+</html>

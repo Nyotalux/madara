@@ -1,0 +1,21 @@
+{% load i18n %}
+{% if notifications %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Message" %}</th>
+            <th>{% translate "Catégorie" %}</th>
+            <th>{% translate "Le" %}</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for notification in notifications %}
+            {% include "notifications/_notification.html" %}
+        {% endfor %}
+    </tbody>
+</table>
+{% include "includes/pagination.html" %}
+{% else %}
+<p class="muted">{% translate "Aucune notification pour le moment." %}</p>
+{% endif %}

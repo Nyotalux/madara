@@ -6,6 +6,11 @@
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
+    {% if user.is_authenticated and webpush_public_key %}
+        <script src="{% static 'js/notifications.js' %}" defer
+                data-vapid="{{ webpush_public_key }}"
+                data-subscribe="{% url 'webpush-subscriptions' %}"></script>
+    {% endif %}
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 <a class="skip-link" href="#contenu">Aller au contenu</a>
@@ -33,7 +38,14 @@
             <a href="{% url 'web:consultation-list' %}" class="{% if 'consultation' in request.resolver_match.url_name or 'prescription' in request.resolver_match.url_name %}is-active{% endif %}">
                 {% translate "Consultations" %}
             </a>
-            <span class="nav-placeholder" title="{% translate 'Disponible au jalon 5' %}">{% translate "Facturation" %}</span>
+            <a href="{% url 'web:notification-list' %}" class="{% if 'notification' in request.resolver_match.url_name %}is-active{% endif %}">
+                {% translate "Notifications" %}
+            </a>
+            {% if current_membership and current_membership.role != 'DOCTOR' and current_membership.role != 'NURSE' %}
+                <a href="{% url 'web:invoice-list' %}" class="{% if 'invoice' in request.resolver_match.url_name or 'payment' in request.resolver_match.url_name %}is-active{% endif %}">
+                    {% translate "Facturation" %}
+                </a>
+            {% endif %}
         {% endif %}
     </nav>
 

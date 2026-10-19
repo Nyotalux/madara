@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n widget_tweaks %}
+
+{% block title %}{% translate "Encaisser" %} {{ invoice.reference }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Encaisser" %} {{ invoice.reference }}</h1>
+        <p class="muted">{{ invoice.patient.display_name }} — {% translate "reste à payer" %} : {{ invoice.amount_due }}</p>
+    </div>
+    <a class="btn btn--ghost" href="{% url 'web:invoice-detail' invoice.pk %}">{% translate "Retour" %}</a>
+</header>
+
+<form method="post" class="card">
+    {% csrf_token %}
+    <div class="filters-grid">
+        <p class="field">
+            <label for="{{ form.amount.id_for_label }}">{{ form.amount.label }}</label>
+            {% render_field form.amount %}
+            {% if form.amount.errors %}<span class="error">{{ form.amount.errors.0 }}</span>{% endif %}
+        </p>
+        <p class="field">
+            <label for="{{ form.method.id_for_label }}">{{ form.method.label }}</label>
+            {% render_field form.method %}
+        </p>
+        <p class="field">
+            <label for="{{ form.paid_at.id_for_label }}">{{ form.paid_at.label }}</label>
+            {% render_field form.paid_at %}
+        </p>
+        <p class="field">
+            <label for="{{ form.reference.id_for_label }}">{{ form.reference.label }}</label>
+            {% render_field form.reference %}
+        </p>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Enregistrer le règlement" %}</button>
+        <a class="btn btn--ghost" href="{% url 'web:invoice-detail' invoice.pk %}">{% translate "Annuler" %}</a>
+    </div>
+</form>
+{% endblock %}

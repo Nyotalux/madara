@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ invoice.reference }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{{ invoice.reference }}</h1>
+        <p class="muted">
+            <span class="badge {{ invoice.status_css }}">{{ invoice.get_status_display }}</span>
+            {% if invoice.is_overdue %}<span class="badge badge--alert">{% translate "Échue depuis" %} {{ invoice.overdue_days }} j</span>{% endif %}
+            · {{ invoice.patient.display_name }}
+            {% if invoice.consultation %}· {% translate "Consultation" %} {{ invoice.consultation.reference }}{% endif %}
+        </p>
+    </div>
+    <div>
+        <a class="btn btn--ghost" href="{% url 'web:invoice-print' invoice.pk %}" target="_blank" rel="noopener">{% translate "Imprimer" %}</a>
+        {% if can_write and invoice.status == 'DRAFT' %}
+            <a class="btn btn--ghost" href="{% url 'web:invoice-edit' invoice.pk %}">{% translate "Modifier" %}</a>
+            <form method="post" action="{% url 'web:invoice-issue' invoice.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--primary">{% translate "Émettre" %}</button>
+            </form>
+        {% endif %}
+        {% if can_write and invoice.status != 'DRAFT' and invoice.status != 'CANCELLED' and invoice.status != 'PAID' %}
+            <a class="btn btn--primary" href="{% url 'web:invoice-payment' invoice.pk %}">{% translate "Encaisser" %}</a>
+        {% endif %}
+    </div>
+</header>
+
+<section class="grid grid--3">
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Total (TTC)" %}</p>
+        <p class="card__value">{{ invoice.total }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Encaissé" %}</p>
+        <p class="card__value">{{ invoice.paid_amount }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Reste à payer" %}</p>
+        <p class="card__value">{{ invoice.amount_due }}</p>
+    </div>
+</section>
+
+<h2>{% translate "Prestations" %}</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Prestation" %}</th>
+            <th>{% translate "Qté" %}</th>
+            <th>{% translate "Prix unitaire" %}</th>
+            <th>{% translate "Total" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for line in invoice.lines.all %}
+        <tr>
+            <td>{{ line.label }}</td>
+            <td>{{ line.quantity }}</td>
+            <td>{{ line.unit_price }}</td>
+            <td>{{ line.line_total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="muted">{% translate "Aucune ligne." %}</td></tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr><th colspan="3">{% translate "Total hors taxe" %}</th><td>{{ invoice.amount_excl_tax }}</td></tr>
+        <tr><th colspan="3">{% translate "TVA" %} ({{ invoice.tax_rate }})</th><td>{{ invoice.tax_amount }}</td></tr>
+        <tr><th colspan="3">{% translate "Total" %}</th><td><strong>{{ invoice.total }}</strong></td></tr>
+    </tfoot>
+</table>
+
+<h2>{% translate "Règlements" %}</h2>
+{% if invoice.payments.all %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Le" %}</th>
+            <th>{% translate "Montant" %}</th>
+            <th>{% translate "Moyen" %}</th>
+            <th>{% translate "Référence" %}</th>
+            {% if can_write %}<th></th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for payment in invoice.payments.all %}
+        <tr>
+            <td>{{ payment.paid_at|date:"d/m/Y H:i" }}</td>
+            <td>{{ payment.amount }}</td>
+            <td>{{ payment.get_method_display }}</td>
+            <td>{{ payment.reference|default:"—" }}</td>
+            {% if can_write %}
+            <td>
+                <form method="post" action="{% url 'web:payment-delete' invoice.pk payment.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--ghost btn--sm">{% translate "Retirer" %}</button>
+                </form>
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="muted">{% translate "Aucun règlement enregistré." %}</p>
+{% endif %}
+
+{% if invoice.notes %}
+<h2>{% translate "Notes" %}</h2>
+<p class="muted">{{ invoice.notes|linebreaksbr }}</p>
+{% endif %}
+
+{% if can_cancel and invoice.status != 'CANCELLED' and invoice.status != 'PAID' %}
+<h2>{% translate "Annulation" %}</h2>
+<form method="post" action="{% url 'web:invoice-cancel' invoice.pk %}" class="card">
+    {% csrf_token %}
+    <p class="field">
+        <label for="id_reason">{% translate "Motif d'annulation" %}</label>
+        <input type="text" name="reason" id="id_reason" class="form-control" maxlength="255"
+               placeholder="{% translate 'Erreur de facturation, devis abandonné…' %}">
+    </p>
+    <button type="submit" class="btn btn--danger">{% translate "Annuler la facture" %}</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -266,6 +266,10 @@ NOTIFICATIONS = {
     "TWILIO_ACCOUNT_SID": env("TWILIO_ACCOUNT_SID", default=""),
     "TWILIO_AUTH_TOKEN": env("TWILIO_AUTH_TOKEN", default=""),
     "TWILIO_WHATSAPP_FROM": env("TWILIO_WHATSAPP_FROM", default=""),
+    # --- Web Push (notifications navigateur du back-office) ----------------
+    # Clé privée VAPID (base64url, DER PKCS8) : python manage.py generate_vapid_keys
+    "WEBPUSH_PRIVATE_KEY": env("WEBPUSH_VAPID_PRIVATE_KEY", default=""),
+    "WEBPUSH_CONTACT": env("WEBPUSH_CONTACT", default="admin@madara.ma"),
     "DEFAULT_FROM_EMAIL": env("DEFAULT_FROM_EMAIL", default="no-reply@madara.local"),
     "DEFAULT_FROM_NAME": env("DEFAULT_FROM_NAME", default="Madara Clinique"),
 }

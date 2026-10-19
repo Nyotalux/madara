@@ -1,0 +1,24 @@
+{% load i18n %}
+<tr class="{% if notification.is_unread %}is-unread{% endif %}" id="notif-{{ notification.pk }}">
+    <td>
+        <strong>{{ notification.title }}</strong>
+        <p class="muted">{{ notification.body|linebreaksbr }}</p>
+        <p class="muted">
+            <span class="badge">{{ notification.get_channel_display }}</span>
+            {% if notification.appointment_reference %}<span>· {{ notification.appointment_reference }}</span>{% endif %}
+        </p>
+    </td>
+    <td>{{ notification.get_category_display }}</td>
+    <td>
+        {% if notification.is_unread %}
+            <span class="badge badge--alert">{% translate "Non lue" %}</span>
+            <form method="post" action="{% url 'web:notification-read' notification.pk %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="btn btn--ghost btn--sm">{% translate "Marquer lue" %}</button>
+            </form>
+        {% else %}
+            {{ notification.read_at|date:"d/m/Y H:i" }}
+        {% endif %}
+    </td>
+</tr>

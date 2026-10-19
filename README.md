@@ -37,6 +37,7 @@ python manage.py seed_demo     # optionnel : données de démonstration
 ```bash
 python manage.py runserver 8765          # http://127.0.0.1:8765/
 celery -A config worker -l info          # dans un second terminal (optionnel)
+celery -A config beat -l info            # planificateur des rappels (jalon 5, optionnel)
 ```
 
 | URL | Rôle |
@@ -135,7 +136,8 @@ API : `/api/v1/appointments/` (+ `?date=`, `?du=&au=`, `?practitioner=`, `?statu
 
 Cloisonnement : un médecin ou un infirmier ne voit et ne modifie que ses propres
 rendez-vous ; l'accueil et l'administrateur gèrent toute la clinique. Les rappels
-automatiques arrivent au jalon 5 (le champ `reminder_sent_at` est déjà en place).
+automatiques sont décrits au § 11 (le champ `reminder_sent_at` est renseigné au
+premier envoi).
 
 ## 8. Consultations et dossiers médicaux (jalon 4)
 
@@ -221,8 +223,105 @@ curl http://127.0.0.1:8765/api/v1/clinics/current/ \
 | `GET`/`PATCH` | `/api/v1/medical-records/` | antécédents du dossier médical |
 | `GET`/`POST` | `/api/v1/medical-documents/` | pièces jointes (multipart) |
 | `GET`/`POST` | `/api/v1/medical-shares/` | liens de partage temporaires |
+| `GET` | `/api/v1/notifications/` | notifications de l'utilisateur connecté |
+| `POST` | `/api/v1/notifications/{id}/read/` | marquer une notification lue |
+| `POST` | `/api/v1/notifications/read_all/` | tout marquer comme lu |
+| `GET`/`POST` | `/api/v1/invoices/` | factures (voir § 11) |
+| `POST` | `/api/v1/invoices/{id}/pay/` | encaisser un règlement |
+| `POST` | `/api/v1/invoices/{id}/cancel/` | annuler une facture |
+| `GET`/`POST` | `/api/v1/payments/` | règlements (lecture) |
 
-## 10. Données de démonstration
+## 10. Notifications et rappels (jalon 5)
+
+Chaque notification porte une file d'attente (canal, catégorie, heure d'envoi
+souhaitée) et passe par `apps/notifications/services.py` : mise en file, envoi
+dû, rappels de rendez-vous. `queue_notification` résout le destinataire (membre
+du personnel ou patient) et ignore poliment un canal sans contact connu.
+
+| Canal | Destinataire | Usage |
+|-------|--------------|-------|
+| `WHATSAPP` | patient | rappel J-1 (24 h avant le rendez-vous) |
+| `EMAIL` | patient ou personnel | rappels J-1 / H-1 au patient, agenda du jour au praticien |
+| `IN_APP` | personnel | casier du back-office (badge non lues dans l'en-tête) |
+| Web Push | personnel | la notification système du navigateur, assise sur `IN_APP` |
+
+| Règle | Comportement |
+|-------|--------------|
+| Planification | `APPOINTMENT_REMINDER_SCHEDULE` (réglage) : J-1 → WhatsApp + e-mail patient, H-1 → in-app praticien + e-mail patient |
+| Réservation / déplacement | les rappels sont créés ou replanifiés par `book_appointment` / `reschedule` (jamais bloquant) |
+| Annulation | les rappels en attente partent du file (`CANCELLED`), le créneau est libéré |
+| Premier envoi | `reminder_sent_at` est renseigné ; un rendez-vous déjà rappelé n'est jamais re-rappelé |
+| Filet de sécurité | toutes les 10 min, les rendez-vous proches sans rappel couvert reçoivent un message in-app + e-mail patient |
+| Ancienneté | un échec d'envoi est conservé (`FAILED`, `last_error`) pour une nouvelle tentative |
+| Lecture | seul le destinataire marque ses messages « lus » (individuel ou tout-lire) |
+| Push navigateur | chaque message in-app livré est aussi poussé vers les navigateurs abonnés (Web Push, best effort) ; un endpoint mort (404/410) désactive la souscription |
+| Cloisonnement | chaque notification appartient à la clinique concernée ; l'API et le back-office ne montrent que les siennes |
+
+Fournisseurs (`.env`) : `WHATSAPP_PROVIDER` = `console` (journal, développement),
+`meta` (WhatsApp Cloud API) ou `twilio` ; les e-mails partent via `EMAIL_BACKEND`
+(console en développement, SMTP en production).
+
+**Web Push (navigateur, personnel)** — service worker servi à la racine (`/sw.js`),
+abonnement automatique à la première visite du back-office (permission demandée
+une seule fois). Configuration :
+
+```bash
+python manage.py generate_vapid_keys   # colle WEBPUSH_VAPID_PRIVATE_KEY dans .env
+```
+
+Les notifications système fonctionnent sur Android et tous les navigateurs de
+bureau ; sur iPhone/iPad, Safari ≥ 16.4 et l'installation du site sur l'écran
+d'accueil. Sans HTTPS ni clés configurées, le site dégrade proprement vers le
+badge in-app.
+
+API d'abonnement : `POST/DELETE /api/v1/webpush/` et `/api/v1/webpush/cle/`.
+
+## 11. Facturation (jalon 6)
+
+La facture rattache un patient (et, le cas échéant, la consultation qui a
+motivé l'acte) à des lignes de prestations. Les règles vivent dans
+`apps/billing/services.py` ; les montants sont calculés à la lecture à partir
+des lignes et du taux de TVA (celui de la clinique par défaut, modifiable).
+
+| Règle | Comportement |
+|-------|--------------|
+| Référence | `FAC-AAAA-00001` par clinique |
+| Cycle | brouillon → émise → (partiellement payée) → payée ; une facture payée est définitive |
+| Émission | fixe l'échéance (30 jours par défaut) et verrouille les lignes |
+| Règlement | partiel ou solde ; refuse tout dépassement du reste à payer (verrou pessimiste) |
+| Annulation | réservée à l'administration et à la comptabilité ; impossible dès le premier règlement |
+| Suppression | impossible (`DELETE` refusé) : l'historique comptable est conservé, on annule |
+| Impayés | factures émises/partielles au-delà de l'échéance (`due_at`) |
+| Relance | tâche Celery à 09:00 : WhatsApp puis e-mail au patient (1er canal disponible), synthèse in-app à l'administration et à la comptabilité ; cadence pilotée par `clinic.dunning_days` puis tous les 7 jours |
+| Périmètre | lecture/écriture : ADMIN, RECEPTION, ACCOUNTANT — les praticiens et infirmiers n'ont pas accès à la facturation |
+
+| Écran | Route |
+|-------|-------|
+| Liste filtrable + compteurs | `/factures/` |
+| Fiche (lignes, règlements, actions) | `/factures/{id}/` |
+| Création / modification de brouillon | `/factures/nouveau/`, `/factures/{id}/modifier/` |
+| Émission / annulation | `/factures/{id}/emettre/`, `/factures/{id}/annuler/` |
+| Encaissement / retrait d'un règlement | `/factures/{id}/paiement/`, `/factures/{id}/paiement/{id}/retirer/` |
+| Version imprimable | `/factures/{id}/imprimer/` |
+
+API : `/api/v1/invoices/` (+ `?status=`, `?q=`, `?overdue=1`), `…/{id}/pay/`,
+`…/{id}/cancel/`, `…/{id}/payments/`, `/api/v1/payments/` (+ `?invoice=`). La
+création accepte les lignes imbriquées et l'émission en un appel (`emit: true`).
+
+| Écran | Route |
+|-------|-------|
+| Casier du personnel (filtres, pagination) | `/notifications/` |
+| Marquer une notification lue | `/notifications/{id}/lue/` |
+| Tout marquer comme lu | `/notifications/tout-lire/` |
+
+Tâches Celery (cadenas dans `config/celery.py`) : `notifications.dispatch_pending`
+(toutes les 2 min), `appointments.tasks.send_daily_agenda` (07:00),
+`appointments.tasks.send_upcoming_reminders` (toutes les 10 min).
+
+API : `/api/v1/notifications/` (+ `?channel=`, `?category=`, `?status=`, `?unread=1`),
+`…/{id}/read/`, `…/read_all/`.
+
+## 11. Données de démonstration
 
 `python manage.py seed_demo` crée deux cliniques, leurs équipes, des horaires,
 40 dossiers patients et 7 jours d'agenda par clinique (l'un des dossiers est archivé
@@ -240,7 +339,7 @@ Options utiles : `--patients-per-clinic`, `--staff-per-clinic`, `--agenda-days`,
 Mot de passe commun : `Madara2026!`. Administrators plateforme : `admin@madara.ma`.
 `--flush` repart de zéro.
 
-## 11. Tests et qualité
+## 12. Tests et qualité
 
 ```bash
 pytest                       # suite complète (base de test PostgreSQL dédiée)
@@ -258,7 +357,12 @@ refusée sans créneau valide, API créneaux/statuts/transitions) et le jalon 4 
 consultations, dossier médical depuis la fiche patient, démarrage d'acte refusé à
 l'accueil, API consultations/ordonnances/dossiers médicaux).
 
-## 12. Structure du projet
+Suite pytest : `tests/test_notifications.py` (jalon 5 : file d'attente, canaux,
+dispatch, rappels, écran web et API, cloisonnement), `tests/test_webpush.py`
+(push navigateur) et `tests/test_billing.py` (jalon 6 : facturation, montants,
+paiements, impayés, relances, rôles, web et API).
+
+## 13. Structure du projet
 
 ```
 apps/
@@ -268,8 +372,8 @@ apps/
   appointments/   agenda et rendez-vous (jalon 3 — livré)
   consultations/  consultations, ordonnances (jalon 4 — livré)
   medical_records/ dossiers, pièces jointes et partages (jalon 4 — livré)
-  notifications/  e-mails, WhatsApp, rappels (jalon 5)
-  billing/        factures, règlements, impayés (jalon 6)
+  notifications/  e-mails, WhatsApp, rappels (jalon 5 — livré)
+  billing/        factures, règlements, impayés (jalon 6 — facturation livrée)
   inventory/      produits et stock (jalon 6)
   payroll/        salaires et primes (jalon 6)
   dashboard/      tableaux de bord (jalon 7)
@@ -279,12 +383,12 @@ tests/            tests pytest
 scripts/          outils (smoke test)
 ```
 
-## 13. Jalons
+## 14. Jalons
 
 1. Socle multi-clinique, rôles, authentification web/API, dashboard minimal — **terminé**
 2. Dossiers patients — **terminé** (web + API, recherche, impression, archivage)
 3. Agenda et rendez-vous — **terminé** (web + API, créneaux, conflits, salle d'attente)
 4. Consultations et dossiers médicaux — **terminé** (web + API, salle d'attente → consultation → clôture, ordonnances, pièces jointes, partage de dossier)
-5. Notifications et rappels
-6. Facturation, stock et salaires
+5. Notifications et rappels — **terminé** (web + API, file d'attente, WhatsApp/e-mail patient, in-app praticien, agenda du jour, tâches Celery)
+6. Facturation, stock et salaires — **partiel** (facturation livrée : web + API, règlements, impayés, relances ; stock et salaires à venir)
 7. Tableaux de bord et reporting

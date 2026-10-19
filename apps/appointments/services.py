@@ -286,6 +286,85 @@ def appointments_by_day(queryset) -> dict:
     return grouped
 
 
+def agenda_notice(clinic, membership, day=None) -> list:
+    """Notifications de la synthèse du jour pour un praticien (jalon 5).
+
+    Renvoie des notifications non enregistrées : message in-app (toujours)
+    et e-mail (si un e-mail joignable existe). La tâche Celery les enregistre.
+    """
+    from apps.notifications.models import Notification
+
+    if day is None:
+        day = timezone.localdate(timezone.now(), clinic_timezone(clinic))
+    start, end = day_bounds(day, clinic_timezone(clinic))
+    if membership.role in {Membership.Role.DOCTOR, Membership.Role.NURSE}:
+        appointments = agenda_queryset(
+            clinic, start=start, end=end, practitioner=membership
+        )
+    else:
+        # Administrateur : vue d'ensemble de la clinique.
+        appointments = agenda_queryset(clinic, start=start, end=end)
+    count = appointments.count()
+    lines = [
+        _("%(heure)s — %(patient)s (%(statut)s)")
+        % {
+            "heure": appointment.display_time,
+            "patient": appointment.patient.display_name,
+            "statut": appointment.get_status_display(),
+        }
+        for appointment in appointments[:20]
+    ]
+    body = (
+        _("Bonjour %(nom)s,")
+        + "\n\n"
+        + _(
+            "Votre agenda du %(jour)s à la clinique %(clinique)s "
+            "compte %(count)s rendez-vous."
+        )
+        % {
+            "nom": membership.user.full_name or "",
+            "jour": day.strftime("%d/%m/%Y"),
+            "clinique": clinic.name,
+            "count": count,
+        }
+        + ("\n\n" + "\n".join(lines) if lines else "")
+        + "\n\n"
+        + _("— Madara")
+    )
+    title = _("Agenda du %(jour)s — %(clinique)s") % {
+        "jour": day.strftime("%d/%m/%Y"),
+        "clinique": clinic.name,
+    }
+    notices = [
+        Notification(
+            clinic=clinic,
+            recipient=membership.user,
+            channel=Notification.Channel.IN_APP,
+            category=Notification.Category.AGENDA_DIGEST,
+            title=title,
+            body=body,
+        )
+    ]
+    if _has_reachable_email(membership.user):
+        notices.append(
+            Notification(
+                clinic=clinic,
+                recipient=membership.user,
+                channel=Notification.Channel.EMAIL,
+                category=Notification.Category.AGENDA_DIGEST,
+                title=title,
+                body=body,
+            )
+        )
+    return notices
+
+
+def _has_reachable_email(user) -> bool:
+    return bool(
+        (getattr(user, "notification_email", "") or getattr(user, "email", "")).strip()
+    )
+
+
 # ---------------------------------------------------------------------------
 # Réservation
 # ---------------------------------------------------------------------------
@@ -380,7 +459,22 @@ def book_appointment(
     )
     appointment.full_clean()
     appointment.save()
+    _schedule_reminders(appointment)
     return appointment
+
+
+def _schedule_reminders(appointment) -> None:
+    """Planifie les rappels du jalon 5 (jamais bloquant pour la réservation)."""
+    try:
+        from apps.notifications.services import schedule_appointment_reminders
+
+        schedule_appointment_reminders(appointment)
+    except Exception:  # pragma: no cover - la file peut être indisponible
+        from logging import getLogger
+
+        getLogger(__name__).exception(
+            "Rappels non planifiés pour %s.", appointment.reference
+        )
 
 
 @transaction.atomic
@@ -417,7 +511,30 @@ def reschedule(
     appointment.end_at = end_at
     appointment.full_clean()
     appointment.save(update_fields=["start_at", "end_at", "updated_at"])
+    _reschedule_reminders(appointment)
     return appointment
+
+
+def _reschedule_reminders(appointment) -> None:
+    """Un rendez-vous déplacé abandonne ses anciens rappels et réapparaît dans la file."""
+    try:
+        from apps.notifications.services import (
+            cancel_appointment_reminders,
+            schedule_appointment_reminders,
+        )
+
+        cancel_appointment_reminders(appointment)
+        if appointment.status in (
+            Appointment.Status.PENDING,
+            Appointment.Status.CONFIRMED,
+        ):
+            schedule_appointment_reminders(appointment)
+    except Exception:  # pragma: no cover - la file peut être indisponible
+        from logging import getLogger
+
+        getLogger(__name__).exception(
+            "Rappels non replanifiés pour %s.", appointment.reference
+        )
 
 
 @transaction.atomic
@@ -425,5 +542,10 @@ def set_status(
     appointment: Appointment, status: str, *, reason: str = "", user=None
 ) -> Appointment:
     """Applique une transition de statut en journalisant l'annulation."""
+    from apps.notifications.services import cancel_appointment_reminders
+
     appointment.transition_to(status, reason=reason, user=user)
+    if status == Appointment.Status.CANCELLED:
+        # Les rappels planifiés (jalon 5) ne partent plus : le créneau est libre.
+        cancel_appointment_reminders(appointment)
     return appointment

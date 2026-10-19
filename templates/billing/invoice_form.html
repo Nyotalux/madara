@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load i18n widget_tweaks %}
+
+{% block title %}{% if editing %}{% translate "Modifier la facture" %}{% else %}{% translate "Nouvelle facture" %}{% endif %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% if editing %}{% translate "Modifier le brouillon" %}{% else %}{% translate "Nouvelle facture" %}{% endif %}</h1>
+        <p class="muted">{{ current_clinic.name }}</p>
+    </div>
+    <a class="btn btn--ghost" href="{% if invoice %}{% url 'web:invoice-detail' invoice.pk %}{% else %}{% url 'web:invoice-list' %}{% endif %}">{% translate "Retour" %}</a>
+</header>
+
+<form method="post" class="card">
+    {% csrf_token %}
+    <div class="filters-grid">
+        <p class="field field--full">
+            <label for="{{ form.patient.id_for_label }}">{{ form.patient.label }}</label>
+            {% render_field form.patient %}
+            {% if form.patient.errors %}<span class="error">{{ form.patient.errors.0 }}</span>{% endif %}
+        </p>
+        <p class="field">
+            <label for="{{ form.consultation.id_for_label }}">{{ form.consultation.label }}</label>
+            {% render_field form.consultation %}
+        </p>
+        <p class="field">
+            <label for="{{ form.tax_rate.id_for_label }}">{{ form.tax_rate.label }}</label>
+            {% render_field form.tax_rate %}
+            {% if form.tax_rate.help_text %}<span class="muted">{{ form.tax_rate.help_text }}</span>{% endif %}
+        </p>
+        <p class="field">
+            <label for="{{ form.due_days.id_for_label }}">{{ form.due_days.label }}</label>
+            {% render_field form.due_days %}
+        </p>
+    </div>
+
+    <h2>{% translate "Prestations" %}</h2>
+    {% if formset.non_form_errors %}<span class="error">{{ formset.non_form_errors.0 }}</span>{% endif %}
+    <table class="table" id="lignes-facture">
+        <thead>
+            <tr>
+                <th>{% translate "Prestation" %}</th>
+                <th>{% translate "Qté" %}</th>
+                <th>{% translate "Prix unitaire" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for subform in formset %}
+            <tr>
+                <td>{{ subform.label }}{% if subform.label.errors %}<span class="error">{{ subform.label.errors.0 }}</span>{% endif %}</td>
+                <td>{{ subform.quantity }}</td>
+                <td>{{ subform.unit_price }}{% if subform.unit_price.errors %}<span class="error">{{ subform.unit_price.errors.0 }}</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p class="muted">{% translate "Laissez les rangées inutilisées vides." %}</p>
+
+    <p class="field field--full">
+        <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+        {% render_field form.notes %}
+    </p>
+
+    <div class="form-actions">
+        {% if editing %}
+            <button type="submit" class="btn btn--primary">{% translate "Enregistrer" %}</button>
+        {% else %}
+            <button type="submit" class="btn btn--ghost" name="emit" value="0">{% translate "Enregistrer en brouillon" %}</button>
+            <button type="submit" class="btn btn--primary" name="emit" value="1">{% translate "Émettre" %}</button>
+        {% endif %}
+    </div>
+</form>
+{% endblock %}

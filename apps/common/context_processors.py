@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from django.conf import settings
 
+from apps.notifications.providers import vapid_public_key
+
 
 def _unread_count(user) -> int:
-    """Nombre de notifications non lues (l'app notifications arrive au jalon 3)."""
+    """Nombre de notifications in-app non lues (app notifications, jalon 5)."""
     if user is None or not user.is_authenticated:
         return 0
     if not hasattr(user, "notifications"):
@@ -31,6 +33,7 @@ def site_context(request):
             user.clinics.all() if user is not None and user.is_authenticated else []
         ),
         "unread_notifications": _unread_count(user),
+        "webpush_public_key": vapid_public_key(),
         "debug": settings.DEBUG,
         "media_url": settings.MEDIA_URL,
     }

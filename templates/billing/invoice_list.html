@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Facturation" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Facturation" %}</h1>
+        <p class="muted">{{ current_clinic.name }} — {% blocktranslate count counter=result_count %}1 facture{% plural %}{{ counter }} factures{% endblocktranslate %}</p>
+    </div>
+    <a class="btn btn--primary" href="{% url 'web:invoice-create' %}">{% translate "Nouvelle facture" %}</a>
+</header>
+
+<section class="grid grid--4">
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Factures émises" %}</p>
+        <p class="card__value">{{ stats.issued }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Impayées échues" %}</p>
+        <p class="card__value">{{ stats.overdue }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Encaissé ce mois" %}</p>
+        <p class="card__value">{{ stats.collected_month }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Reste à encaisser" %}</p>
+        <p class="card__value">{{ stats.outstanding }}</p>
+    </div>
+</section>
+
+<form method="get" class="filters-filters" role="search">
+    <div class="filters-grid">
+        <p class="field field--full">
+            <label for="id_q">{% translate "Recherche" %}</label>
+            <input type="search" name="q" id="id_q" value="{{ form.q.value|default:'' }}"
+                   class="form-control" placeholder="{% translate 'Nom, téléphone, référence…' %}">
+        </p>
+        <p class="field">
+            <label for="id_status">{% translate "État" %}</label>
+            {{ form.status }}
+        </p>
+        <p class="field">
+            <label for="id_impayees">{% translate "Règlement" %}</label>
+            {{ form.impayees }}
+        </p>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Filtrer" %}</button>
+        <a class="btn btn--ghost" href="{% url 'web:invoice-list' %}">{% translate "Réinitialiser" %}</a>
+    </div>
+</form>
+
+{% if invoices %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Référence" %}</th>
+            <th>{% translate "Patient" %}</th>
+            <th>{% translate "État" %}</th>
+            <th>{% translate "Émission" %}</th>
+            <th>{% translate "Échéance" %}</th>
+            <th>{% translate "Reste à payer" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for invoice in invoices %}
+        <tr>
+            <td><a href="{% url 'web:invoice-detail' invoice.pk %}">{{ invoice.reference }}</a></td>
+            <td>{{ invoice.patient.display_name }}</td>
+            <td><span class="badge {{ invoice.status_css }}">{{ invoice.get_status_display }}</span>
+                {% if invoice.is_overdue %}<span class="badge badge--alert">{% translate "Échue" %}</span>{% endif %}
+            </td>
+            <td>{{ invoice.issued_at|date:"d/m/Y"|default:"—" }}</td>
+            <td>{{ invoice.due_at|date:"d/m/Y"|default:"—" }}</td>
+            <td>{{ invoice.amount_due }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% include "includes/pagination.html" %}
+{% else %}
+<p class="muted">{% translate "Aucune facture pour ces filtres." %}</p>
+{% endif %}
+{% endblock %}

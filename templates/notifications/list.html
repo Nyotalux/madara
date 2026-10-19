@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Notifications" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Notifications" %}</h1>
+        <p class="muted">{{ current_clinic.name }} — {% translate "Vos messages et rappels internes" %}</p>
+    </div>
+    <form method="post" action="{% url 'web:notification-read-all' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--ghost">{% translate "Tout marquer comme lu" %}</button>
+    </form>
+</header>
+
+<form method="get" class="filters-filters" role="search">
+    <div class="filters-grid">
+        <p class="field">
+            <label for="id_statut">{% translate "Lecture" %}</label>
+            <select name="statut" id="id_statut" class="form-control">
+                <option value="">{% translate "Toutes" %}</option>
+                <option value="unread" {% if statut == 'unread' %}selected{% endif %}>{% translate "Non lues" %}</option>
+                <option value="read" {% if statut == 'read' %}selected{% endif %}>{% translate "Lues" %}</option>
+            </select>
+        </p>
+        <p class="field">
+            <label for="id_categorie">{% translate "Catégorie" %}</label>
+            <select name="categorie" id="id_categorie" class="form-control">
+                <option value="">{% translate "Toutes" %}</option>
+                {% for value, label in categories %}
+                    <option value="{{ value }}" {% if category == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </p>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Filtrer" %}</button>
+        <a class="btn btn--ghost" href="{% url 'web:notification-list' %}">{% translate "Réinitialiser" %}</a>
+    </div>
+</form>
+
+<div id="notifications">
+    {% include "notifications/_table.html" %}
+</div>
+{% endblock %}
