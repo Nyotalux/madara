@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Prime / retenue" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Prime / retenue" %}</h1>
+        <p class="muted">Pour une période de paie ({{ period }}).</p>
+    </div>
+</header>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {% include "includes/field.html" with field=form.membership %}
+        {% include "includes/field.html" with field=form.period %}
+        {% include "includes/field.html" with field=form.kind %}
+        {% include "includes/field.html" with field=form.label %}
+        {% include "includes/field.html" with field=form.amount %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn--primary">{% translate "Enregistrer" %}</button>
+            <a class="btn btn--ghost" href="{% url 'web:period-detail' period %}">{% translate "Annuler" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

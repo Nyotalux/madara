@@ -44,7 +44,6 @@ from apps.consultations.services import (
 from apps.medical_records.models import MedicalRecord
 from apps.medical_records.services import add_document, create_share, ensure_record
 from apps.patients.models import Patient
-
 DEFAULT_PASSWORD = "Madara2026!"
 
 FIRST_NAMES = [
@@ -258,6 +257,8 @@ class Command(BaseCommand):
                 clinic, staff, patients, appointments
             )
             self._create_medical_records(clinic, patients, consultations)
+            self._create_stock(clinic, staff)
+            self._create_payroll(clinic, staff)
             self._link_platform_admin(platform, clinic)
             clinics.append((clinic, staff, patients, appointments))
 
@@ -837,3 +838,126 @@ class Command(BaseCommand):
                 archived.archive("Dossier clos (démo) — patient transféré")
             self.stdout.write(f"  {len(created)} dossiers patients créés.")
             return created
+
+
+    # -- Stock (jalon 6) ---------------------------------------------------
+
+    #: catalogue de démonstration :
+    #(désignation, catégorie, unité, achat, vente, stock visé, seuil d'alerte)
+    SEED_PRODUCTS = [
+        ("Paracétamol 500 mg (boîte)", "MEDICINE", "boîte", "12.00", "18.00", 60, 10),
+        ("Amoxicilline 1 g (boîte)", "MEDICINE", "boîte", "22.00", "35.00", 40, 10),
+        ("Sérum physiologique", "MEDICINE", "flacon", "6.00", "10.00", 30, 8),
+        ("Seringue 5 ml", "CONSUMABLE", "unité", "1.20", "2.50", 200, 50),
+        ("Gants latex (boîte)", "CONSUMABLE", "boîte", "18.00", "28.00", 25, 6),
+        ("Compresses stériles", "CONSUMABLE", "paquet", "9.00", "15.00", 45, 10),
+        ("Gel hydroalcoolique 500 ml", "CONSUMABLE", "flacon", "8.50", "12.00", 18, 6),
+        ("Tensiomètre électronique", "EQUIPMENT", "unité", "320.00", "460.00", 4, 1),
+        ("Eau distillée 1 L", "RETAIL", "bouteille", "3.50", "7.00", 24, 6),
+    ]
+
+    def _create_stock(self, clinic, staff) -> None:
+        """Catalogue de la clinique : entrées d'origine et consommations."""
+        from apps.inventory import services as inventory_services
+        from apps.inventory.models import StockMovement
+
+        receipt_accountant = next(
+            (m for m in staff if m.role == Membership.Role.ACCOUNTANT),
+            next((m for m in staff if m.role == Membership.Role.ADMIN), None),
+        )
+        today = timezone.localdate()
+        for index, (name, category, unit, purchase, sale, stock, threshold) in enumerate(
+            self.SEED_PRODUCTS
+        ):
+            product = inventory_services.create_product(
+                clinic=clinic,
+                name=name,
+                category=category,
+                unit=unit,
+                purchase_price=purchase,
+                sale_price=sale,
+                low_stock_threshold=threshold,
+                notes="",
+                initial_quantity=stock,
+                user=receipt_accountant.user if receipt_accountant else None,
+            )
+            consumed = 0 if index % 3 == 0 else index * random.randint(1, 3)
+            consumed = min(consumed, stock - threshold)
+            if consumed > 0:
+                movement_days = max(today.day - index, 1)
+                inventory_services.record_movement(
+                    clinic,
+                    product,
+                    kind=StockMovement.Kind.OUT,
+                    quantity=consumed,
+                    reason="Consommation cabinet",
+                    moved_at=timezone.make_aware(
+                        timezone.datetime(today.year, today.month, movement_days, 10, 30)
+                    ),
+                    user=receipt_accountant.user if receipt_accountant else None,
+                )
+                product.refresh_from_db()
+
+    # -- Salaires (jalon 6) -------------------------------------------------
+
+    SEED_SALARIES = {
+        Membership.Role.ADMIN: "14000.00",
+        Membership.Role.RECEPTION: "6200.00",
+        Membership.Role.DOCTOR: "18000.00",
+        Membership.Role.NURSE: "8600.00",
+        Membership.Role.ACCOUNTANT: "9800.00",
+    }
+
+    def _create_payroll(self, clinic, staff) -> None:
+        """Salaire de base sur chaque membership, puis la paie du mois."""
+        from apps.payroll import services as payroll_services
+        from apps.payroll.models import Bonus, Payslip
+
+        current_period = payroll_services.current_period()
+        for membership in staff:
+            membership.base_salary = self.SEED_SALARIES[membership.role]
+            membership.save(update_fields=["base_salary"])
+
+        # Deux primes actives : une garde pour le médecin, une retenue
+        # (avance) pour quelqu'un dont le bulletin n'est pas encore payé.
+        doctors = [m for m in staff if m.role == Membership.Role.DOCTOR]
+        if doctors:
+            payroll_services.add_bonus(
+                clinic,
+                doctors[0],
+                kind=Bonus.Kind.BONUS,
+                label="Garde de nuit (démo)",
+                amount="1200.00",
+                period=current_period,
+            )
+        receptionists = [m for m in staff if m.role == Membership.Role.RECEPTION]
+        if receptionists:
+            payroll_services.add_bonus(
+                clinic,
+                receptionists[0],
+                kind=Bonus.Kind.DEDUCTION,
+                label="Avance sur salaire (démo)",
+                amount="800.00",
+                period=current_period,
+            )
+        payroll_services.generate_payslips(clinic, period=current_period)
+
+        # Les bulletins des praticiens sont d'ores et déjà payés ; les autres
+        # restent en brouillon pour exercer l'écran de paie.
+        for membership in staff:
+            if membership.role not in (
+                Membership.Role.ADMIN,
+                Membership.Role.RECEPTION,
+                Membership.Role.ACCOUNTANT,
+            ):
+                continue
+            payslip = Payslip.objects.filter(
+                clinic=clinic, membership=membership, period=current_period
+            ).first()
+            if payslip is not None and payslip.status == Payslip.Status.DRAFT:
+                payroll_services.pay_payslip(payslip)
+
+        self.stdout.write(
+            f"  Stock et paie établis ({len(self.SEED_PRODUCTS)} produits, "
+            f"période {current_period})."
+        )

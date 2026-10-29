@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Stock" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Stock" %}</h1>
+        <p class="muted">{{ current_clinic.name }} — {% blocktranslate count counter=result_count %}1 produit{% plural %}{{ counter }} produits{% endblocktranslate %}</p>
+    </div>
+    <div>
+        <a class="btn btn--ghost" href="{% url 'web:movement-list' %}">{% translate "Mouvements" %}</a>
+        <a class="btn btn--primary" href="{% url 'web:product-create' %}">{% translate "Nouveau produit" %}</a>
+    </div>
+</header>
+
+<section class="grid grid--4">
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Références actives" %}</p>
+        <p class="card__value">{{ stats.references }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Stock bas" %}</p>
+        <p class="card__value">{{ stats.low_stock }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Ruptures de stock" %}</p>
+        <p class="card__value">{{ stats.out_of_stock }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Valeur du stock" %}</p>
+        <p class="card__value">{{ stats.stock_value|floatformat:2 }}</p>
+    </div>
+</section>
+
+<form method="get" class="filters-filters" role="search">
+    <div class="filters-grid">
+        <p class="field field--full">
+            <label for="id_q">{% translate "Recherche" %}</label>
+            <input type="search" name="q" id="id_q" value="{{ form.q.value|default:'' }}"
+                   class="form-control" placeholder="{% translate 'Désignation, référence, code-barres…' %}">
+        </p>
+        <p class="field">
+            <label for="id_category">{% translate "Catégorie" %}</label>
+            {{ form.category }}
+        </p>
+        <p class="field">
+            <label for="id_low_stock">{% translate "Alerte" %}</label>
+            {{ form.low_stock }}
+        </p>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Filtrer" %}</button>
+        <a class="btn btn--ghost" href="{% url 'web:product-list' %}">{% translate "Réinitialiser" %}</a>
+    </div>
+</form>
+
+{% if products %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Référence" %}</th>
+            <th>{% translate "Désignation" %}</th>
+            <th>{% translate "Catégorie" %}</th>
+            <th>{% translate "Stock" %}</th>
+            <th>{% translate "Prix de vente" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for product in products %}
+        <tr>
+            <td><a href="{% url 'web:product-detail' product.pk %}">{{ product.reference }}</a></td>
+            <td>{{ product.name }}</td>
+            <td>{{ product.get_category_display }}</td>
+            <td>
+                {{ product.stock_quantity|floatformat:"-2" }} {{ product.unit }}
+                {% if product.is_low_stock %}
+                    <span class="badge badge--alert">{% translate "Stock bas" %}</span>
+                {% endif %}
+            </td>
+            <td>{{ product.sale_price|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% include "includes/pagination.html" %}
+{% else %}
+<p class="muted">{% translate "Aucun produit pour ces filtres." %}</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ product.name }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{{ product.name }}</h1>
+        <p class="muted">{{ product.reference }} — {{ product.get_category_display }}</p>
+    </div>
+    <div>
+        {% if can_write %}
+            {% if product.is_active %}
+                <a class="btn btn--primary" href="{% url 'web:product-movement' product.pk %}">{% translate "Mouvement de stock" %}</a>
+                <a class="btn btn--ghost" href="{% url 'web:product-edit' product.pk %}">{% translate "Modifier" %}</a>
+                <form method="post" action="{% url 'web:product-archive' product.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--ghost">{% translate "Archiver" %}</button>
+                </form>
+            {% else %}
+                <span class="badge badge--alert">{% translate "Archivé" %}</span>
+                <form method="post" action="{% url 'web:product-restore' product.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--primary">{% translate "Restaurer" %}</button>
+                </form>
+            {% endif %}
+        {% endif %}
+    </div>
+</header>
+
+<section class="grid grid--4">
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Stock disponible" %}</p>
+        <p class="card__value">{{ product.stock_quantity|floatformat:"-2" }} {{ product.unit }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Seuil d'alerte" %}</p>
+        <p class="card__value">{{ product.low_stock_threshold|floatformat:"-2" }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Prix d'achat / vente" %}</p>
+        <p class="card__value">{{ product.purchase_price|floatformat:2 }} / {{ product.sale_price|floatformat:2 }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Valeur du stock" %}</p>
+        <p class="card__value">{{ product.stock_value|floatformat:2 }}</p>
+    </div>
+</section>
+
+{% if product.notes or product.barcode %}
+<div class="card">
+    <p><strong>{% translate "Code-barres" %} :</strong> {{ product.barcode|default:"—" }}</p>
+    {% if product.notes %}<p><strong>{% translate "Notes" %} :</strong> {{ product.notes }}</p>{% endif %}
+</div>
+{% endif %}
+
+<h2>{% translate "Derniers mouvements" %}</h2>
+{% if movements %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Type" %}</th>
+            <th>{% translate "Quantité" %}</th>
+            <th>{% translate "Stock avant" %}</th>
+            <th>{% translate "Stock après" %}</th>
+            <th>{% translate "Motif" %}</th>
+            <th>{% translate "Le" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for movement in movements %}
+        <tr>
+            <td>{{ movement.get_kind_display }}</td>
+            <td>{{ movement.quantity_display }} {{ product.unit }}</td>
+            <td>{{ movement.stock_before|floatformat:"-2" }}</td>
+            <td>{{ movement.stock_after|floatformat:"-2" }}</td>
+            <td>{{ movement.reason|default:"—" }}</td>
+            <td>{{ movement.moved_at|date:"d/m/Y H:i" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="muted">{% translate "Aucun mouvement enregistré." %}</p>
+{% endif %}
+{% endblock %}

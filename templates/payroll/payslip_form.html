@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Modifier le bulletin" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Modifier" %} — {{ payslip.reference }}</h1>
+        <p class="muted">{{ payslip.membership.user.full_name }} — {{ payslip.period }}</p>
+    </div>
+</header>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {% include "includes/field.html" with field=form.base_amount %}
+        {% include "includes/field.html" with field=form.bonus_amount %}
+        {% include "includes/field.html" with field=form.deduction_amount %}
+        {% include "includes/field.html" with field=form.notes %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn--primary">{% translate "Enregistrer" %}</button>
+            <a class="btn btn--ghost" href="{% url 'web:payslip-detail' payslip.pk %}">{% translate "Annuler" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

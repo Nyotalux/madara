@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Mouvements de stock" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Mouvements de stock" %}</h1>
+        <p class="muted">{{ current_clinic.name }} — {% blocktranslate count counter=result_count %}1 mouvement{% plural %}{{ counter }} mouvements{% endblocktranslate %}</p>
+    </div>
+    <a class="btn btn--ghost" href="{% url 'web:product-list' %}">{% translate "Produits" %}</a>
+</header>
+
+<form method="get" class="filters-filters" role="search">
+    <div class="filters-grid">
+        <p class="field field--full">
+            <label for="id_q">{% translate "Recherche" %}</label>
+            <input type="search" name="q" id="id_q" value="{{ request.GET.q|default:'' }}"
+                   class="form-control" placeholder="{% translate 'Produit, motif…' %}">
+        </p>
+        <p class="field">
+            <label for="id_type">{% translate "Type" %}</label>
+            <select name="type" id="id_type" class="form-control">
+                <option value="">{% translate "Tous" %}</option>
+                <option value="entrees" {% if request.GET.type == 'entrees' %}selected{% endif %}>{% translate "Entrées" %}</option>
+                <option value="sorties" {% if request.GET.type == 'sorties' %}selected{% endif %}>{% translate "Sorties" %}</option>
+                <option value="ajustements" {% if request.GET.type == 'ajustements' %}selected{% endif %}>{% translate "Ajustements" %}</option>
+            </select>
+        </p>
+        <p class="field">
+            <label for="id_date">{% translate "Journée" %}</label>
+            <input type="date" name="date" id="id_date" value="{{ request.GET.date|default:'' }}" class="form-control">
+        </p>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Filtrer" %}</button>
+        <a class="btn btn--ghost" href="{% url 'web:movement-list' %}">{% translate "Réinitialiser" %}</a>
+    </div>
+</form>
+
+{% if movements %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Le" %}</th>
+            <th>{% translate "Produit" %}</th>
+            <th>{% translate "Type" %}</th>
+            <th>{% translate "Quantité" %}</th>
+            <th>{% translate "Avant → après" %}</th>
+            <th>{% translate "Motif" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for movement in movements %}
+        <tr>
+            <td>{{ movement.moved_at|date:"d/m/Y H:i" }}</td>
+            <td>
+                <a href="{% url 'web:product-detail' movement.product.pk %}">{{ movement.product.name }}</a>
+                <span class="muted">({{ movement.product.reference }})</span>
+            </td>
+            <td>{{ movement.get_kind_display }}</td>
+            <td>{{ movement.quantity_display }} {{ movement.product.unit }}</td>
+            <td>{{ movement.stock_before|floatformat:"-2" }} → {{ movement.stock_after|floatformat:"-2" }}</td>
+            <td>{{ movement.reason|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% include "includes/pagination.html" %}
+{% else %}
+<p class="muted">{% translate "Aucun mouvement pour ces filtres." %}</p>
+{% endif %}
+{% endblock %}

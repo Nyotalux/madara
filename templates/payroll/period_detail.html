@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Paie" %} {{ period }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Période de paie" %} {{ summary.period }}</h1>
+        <p class="muted">{{ current_clinic.name }}</p>
+    </div>
+    <div>
+        {% if can_write %}
+            <form method="post" action="{% url 'web:period-generate' summary.period %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--primary">{% translate "Établir les bulletins" %}</button>
+            </form>
+            <a class="btn btn--ghost" href="{% url 'web:bonus-create' %}?period={{ summary.period }}">{% translate "Prime / retenue" %}</a>
+        {% endif %}
+        <a class="btn btn--ghost" href="{% url 'web:payroll-home' %}">{% translate "Retour" %}</a>
+    </div>
+</header>
+
+<section class="grid grid--4">
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Bulletins" %}</p>
+        <p class="card__value">{{ summary.total }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "À payer" %}</p>
+        <p class="card__value">{{ summary.pending_total|floatformat:2 }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Payés" %}</p>
+        <p class="card__value">{{ summary.paid_total|floatformat:2 }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Masse salariale" %}</p>
+        <p class="card__value">{{ summary.mass_payroll|floatformat:2 }}</p>
+    </div>
+</section>
+
+<h2>{% translate "Bulletins" %}</h2>
+{% if payslips %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Référence" %}</th>
+            <th>{% translate "Membre du personnel" %}</th>
+            <th>{% translate "Base" %}</th>
+            <th>{% translate "Primes" %}</th>
+            <th>{% translate "Retenues" %}</th>
+            <th>{% translate "Net" %}</th>
+            <th>{% translate "État" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for payslip in payslips %}
+        <tr>
+            <td><a href="{% url 'web:payslip-detail' payslip.pk %}">{{ payslip.reference }}</a></td>
+            <td>{{ payslip.membership.user.full_name }}</td>
+            <td>{{ payslip.base_amount|floatformat:2 }}</td>
+            <td>{{ payslip.bonus_amount|floatformat:2 }}</td>
+            <td>{{ payslip.deduction_amount|floatformat:2 }}</td>
+            <td>{{ payslip.net_amount|floatformat:2 }}</td>
+            <td><span class="badge {{ payslip.status_css }}">{{ payslip.get_status_display }}</span></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="muted">{% translate "Aucun bulletin établi pour cette période." %}</p>
+{% endif %}
+
+<h2>{% translate "Primes et retenues de la période" %}</h2>
+{% if bonus_list %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Membre du personnel" %}</th>
+            <th>{% translate "Type" %}</th>
+            <th>{% translate "Libellé" %}</th>
+            <th>{% translate "Montant" %}</th>
+            {% if can_write %}<th></th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for bonus in bonus_list %}
+        <tr>
+            <td>{{ bonus.membership.user.full_name }}</td>
+            <td>{{ bonus.get_kind_display }}</td>
+            <td>{{ bonus.label }}</td>
+            <td>{{ bonus.signed_amount|floatformat:2 }}</td>
+            {% if can_write %}
+            <td>
+                <form method="post" action="{% url 'web:bonus-remove' bonus.pk %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn--ghost btn--sm">{% translate "Retirer" %}</button>
+                </form>
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="muted">{% translate "Aucune prime ni retenue pour cette période." %}</p>
+{% endif %}
+{% endblock %}

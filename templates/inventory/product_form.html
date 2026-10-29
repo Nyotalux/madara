@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}
+  {% if editing %}{% translate "Modifier le produit" %}{% else %}{% translate "Nouveau produit" %}{% endif %} — {{ app_name }}
+{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>
+            {% if editing %}
+                {% translate "Modifier" %} — {{ product.name }}
+            {% else %}
+                {% translate "Nouveau produit" %}
+            {% endif %}
+        </h1>
+        <p class="muted">{{ current_clinic.name }}</p>
+    </div>
+</header>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {% include "includes/field.html" with field=form.name %}
+        <div class="filters-grid">
+            {% include "includes/field.html" with field=form.category %}
+            {% include "includes/field.html" with field=form.unit %}
+        </div>
+        {% include "includes/field.html" with field=form.barcode %}
+        <div class="filters-grid">
+            {% include "includes/field.html" with field=form.purchase_price %}
+            {% include "includes/field.html" with field=form.sale_price %}
+        </div>
+        {% include "includes/field.html" with field=form.low_stock_threshold %}
+        {% if form.initial_quantity %}{% include "includes/field.html" with field=form.initial_quantity %}{% endif %}
+        {% include "includes/field.html" with field=form.notes %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn--primary">{% translate "Enregistrer" %}</button>
+            <a class="btn btn--ghost" href="{% if editing %}{% url 'web:product-detail' product.pk %}{% else %}{% url 'web:product-list' %}{% endif %}">{% translate "Annuler" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

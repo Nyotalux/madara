@@ -28,6 +28,8 @@ urlpatterns = [
     path("", include("apps.notifications.urls_web")),
     # --- Facturation (jalon 6)
     path("", include("apps.billing.urls_web")),
-    # path("", include("apps.inventory.urls_web")),
-    # path("", include("apps.payroll.urls_web")),
+    # --- Stock (jalon 6)
+    path("", include("apps.inventory.urls_web")),
+    # --- Salaires (jalon 6)
+    path("", include("apps.payroll.urls_web")),
 ]

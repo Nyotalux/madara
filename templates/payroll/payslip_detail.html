@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{{ payslip.reference }} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Bulletin" %} {{ payslip.reference }}</h1>
+        <p class="muted">
+            {{ payslip.membership.user.full_name }} — {{ payslip.membership.get_role_display }} — {{ payslip.period }}
+        </p>
+    </div>
+    <div>
+        {% if can_write and payslip.status == 'DRAFT' %}
+            <a class="btn btn--primary" href="{% url 'web:payslip-edit' payslip.pk %}">{% translate "Modifier" %}</a>
+            <form method="post" action="{% url 'web:payslip-pay' payslip.pk %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn--primary">{% translate "Payer" %}</button>
+            </form>
+            <form method="post" action="{% url 'web:payslip-cancel' payslip.pk %}" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="reason" value="">
+                <button type="submit" class="btn btn--ghost">{% translate "Annuler" %}</button>
+            </form>
+        {% endif %}
+        <a class="btn btn--ghost" href="{% url 'web:period-detail' payslip.period %}">{% translate "Période" %}</a>
+    </div>
+</header>
+
+<section class="grid grid--4">
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Salaire de base" %}</p>
+        <p class="card__value">{{ payslip.base_amount|floatformat:2 }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Primes" %}</p>
+        <p class="card__value">{{ payslip.bonus_amount|floatformat:2 }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Retenues" %}</p>
+        <p class="card__value">{{ payslip.deduction_amount|floatformat:2 }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Net à payer" %}</p>
+        <p class="card__value">{{ payslip.net_amount|floatformat:2 }}</p>
+    </div>
+</section>
+
+<div class="card">
+    <p>
+        <span class="badge {{ payslip.status_css }}">{{ payslip.get_status_display }}</span>
+        {% if payslip.is_paid %}— {% translate "payé le" %} {{ payslip.paid_at|date:"d/m/Y" }}{% endif %}
+        {% if payslip.status == 'CANCELLED' %}— {{ payslip.cancellation_reason }}{% endif %}
+    </p>
+    {% if payslip.notes %}<p><strong>{% translate "Notes" %} :</strong> {{ payslip.notes }}</p>{% endif %}
+</div>
+
+<h2>{% translate "Primes et retenues reprises" %}</h2>
+{% if bonus_list %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Type" %}</th>
+            <th>{% translate "Libellé" %}</th>
+            <th>{% translate "Montant" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for bonus in bonus_list %}
+        <tr>
+            <td>{{ bonus.get_kind_display }}</td>
+            <td>{{ bonus.label }}</td>
+            <td>{{ bonus.signed_amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="muted">{% translate "Aucune prime ni retenue pour cette période." %}</p>
+{% endif %}
+{% endblock %}

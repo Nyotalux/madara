@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Mouvement de stock" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Mouvement de stock" %}</h1>
+        <p class="muted">
+            <a href="{% url 'web:product-detail' product.pk %}">{{ product.reference }}</a>
+           — {{ product.name }} ({% translate "stock actuel" %} {{ product.stock_quantity|floatformat:"-2" }} {{ product.unit }})
+        </p>
+    </div>
+</header>
+
+<div class="card">
+    <form method="post">
+        {% csrf_token %}
+        {% include "includes/field.html" with field=form.kind %}
+        {% include "includes/field.html" with field=form.quantity %}
+        {% include "includes/field.html" with field=form.reason %}
+        {% include "includes/field.html" with field=form.moved_at %}
+        <div class="form-actions">
+            <button type="submit" class="btn btn--primary">{% translate "Enregistrer le mouvement" %}</button>
+            <a class="btn btn--ghost" href="{% url 'web:product-detail' product.pk %}">{% translate "Annuler" %}</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

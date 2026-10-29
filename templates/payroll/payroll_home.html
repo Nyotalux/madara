@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Salaires" %} — {{ app_name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Salaires" %}</h1>
+        <p class="muted">
+            {{ current_clinic.name }} — {% blocktranslate count counter=result_count %}1 bulletin{% plural %}{{ counter }} bulletins{% endblocktranslate %}
+        </p>
+    </div>
+    <div>
+        <a class="btn btn--primary" href="{% url 'web:period-detail' summary.period %}">{% translate "Période en cours" %}</a>
+        <a class="btn btn--ghost" href="{% url 'web:bonus-create' %}">{% translate "Prime / retenue" %}</a>
+    </div>
+</header>
+
+<section class="grid grid--4">
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Bulletins actifs" %} ({{ summary.period }})</p>
+        <p class="card__value">{{ summary.total }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "À payer" %}</p>
+        <p class="card__value">{{ summary.pending_total|floatformat:2 }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Payés cette période" %}</p>
+        <p class="card__value">{{ summary.paid_total|floatformat:2 }}</p>
+    </div>
+    <div class="card card--stat">
+        <p class="card__label">{% translate "Masse salariale de la période" %}</p>
+        <p class="card__value">{{ summary.mass_payroll|floatformat:2 }}</p>
+    </div>
+</section>
+
+{% if period_cards %}
+<section class="grid grid--3">
+    {% for card in period_cards %}
+    <a class="card card--stat" href="{% url 'web:period-detail' card.period %}">
+        <p class="card__label">{{ card.period }}</p>
+        <p class="card__value">{{ card.mass_payroll|floatformat:2 }}</p>
+        <p class="muted">
+            {% blocktranslate with drafts=card.drafts paid=card.paid %}{{ drafts }} à établir / {{ paid }} payés{% endblocktranslate %}
+        </p>
+    </a>
+    {% endfor %}
+</section>
+{% endif %}
+
+<form method="get" class="filters-filters" role="search">
+    <div class="filters-grid">
+        <p class="field field--full">
+            <label for="id_q">{% translate "Recherche" %}</label>
+            <input type="search" name="q" id="id_q" value="{{ form.q.value|default:'' }}"
+                   class="form-control" placeholder="{% translate 'Nom, référence de bulletin…' %}">
+        </p>
+        <p class="field">
+            <label for="id_period">{% translate "Période" %}</label>
+            {{ form.period }}
+        </p>
+        <p class="field">
+            <label for="id_status">{% translate "État" %}</label>
+            {{ form.status }}
+        </p>
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn--primary">{% translate "Filtrer" %}</button>
+        <a class="btn btn--ghost" href="{% url 'web:payroll-home' %}">{% translate "Réinitialiser" %}</a>
+    </div>
+</form>
+
+{% if payslips %}
+<table class="table">
+    <thead>
+        <tr>
+            <th>{% translate "Référence" %}</th>
+            <th>{% translate "Membre du personnel" %}</th>
+            <th>{% translate "Période" %}</th>
+            <th>{% translate "Base" %}</th>
+            <th>{% translate "Primes" %}</th>
+            <th>{% translate "Retenues" %}</th>
+            <th>{% translate "Net" %}</th>
+            <th>{% translate "État" %}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for payslip in payslips %}
+        <tr>
+            <td><a href="{% url 'web:payslip-detail' payslip.pk %}">{{ payslip.reference }}</a></td>
+            <td>{{ payslip.membership.user.full_name }}</td>
+            <td>{{ payslip.period }}</td>
+            <td>{{ payslip.base_amount|floatformat:2 }}</td>
+            <td>{{ payslip.bonus_amount|floatformat:2 }}</td>
+            <td>{{ payslip.deduction_amount|floatformat:2 }}</td>
+            <td>{{ payslip.net_amount|floatformat:2 }}</td>
+            <td><span class="badge {{ payslip.status_css }}">{{ payslip.get_status_display }}</span></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% include "includes/pagination.html" %}
+{% else %}
+<p class="muted">{% translate "Aucun bulletin pour ces filtres." %}</p>
+{% endif %}
+{% endblock %}

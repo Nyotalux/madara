@@ -45,6 +45,14 @@
                 <a href="{% url 'web:invoice-list' %}" class="{% if 'invoice' in request.resolver_match.url_name or 'payment' in request.resolver_match.url_name %}is-active{% endif %}">
                     {% translate "Facturation" %}
                 </a>
+                <a href="{% url 'web:product-list' %}" class="{% if 'product' in request.resolver_match.url_name or 'movement' in request.resolver_match.url_name %}is-active{% endif %}">
+                    {% translate "Stock" %}
+                </a>
+                {% if current_membership.role == 'ADMIN' or current_membership.role == 'ACCOUNTANT' %}
+                    <a href="{% url 'web:payroll-home' %}" class="{% if 'payroll' in request.resolver_match.url_name or 'payslip' in request.resolver_match.url_name or 'bonus' in request.resolver_match.url_name or 'period' in request.resolver_match.url_name %}is-active{% endif %}">
+                        {% translate "Salaires" %}
+                    </a>
+                {% endif %}
             {% endif %}
         {% endif %}
     </nav>
