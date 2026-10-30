@@ -373,10 +373,10 @@ apps/
   consultations/  consultations, ordonnances (jalon 4 — livré)
   medical_records/ dossiers, pièces jointes et partages (jalon 4 — livré)
   notifications/  e-mails, WhatsApp, rappels (jalon 5 — livré)
-  billing/        factures, règlements, impayés (jalon 6 — facturation livrée)
-  inventory/      produits et stock (jalon 6)
-  payroll/        salaires et primes (jalon 6)
-  dashboard/      tableaux de bord (jalon 7)
+  billing/        factures, règlements, impayés (jalon 6 — livré)
+  inventory/      produits et stock (jalon 6 — livré)
+  payroll/        salaires et primes (jalon 6 — livré)
+  dashboard/      tableaux de bord et reporting (jalon 7 — livré)
 config/           réglages, URL, WSGI/ASGI, Celery
 templates/        gabarits HTMX
 tests/            tests pytest
@@ -390,5 +390,5 @@ scripts/          outils (smoke test)
 3. Agenda et rendez-vous — **terminé** (web + API, créneaux, conflits, salle d'attente)
 4. Consultations et dossiers médicaux — **terminé** (web + API, salle d'attente → consultation → clôture, ordonnances, pièces jointes, partage de dossier)
 5. Notifications et rappels — **terminé** (web + API, file d'attente, WhatsApp/e-mail patient, in-app praticien, agenda du jour, tâches Celery)
-6. Facturation, stock et salaires — **partiel** (facturation livrée : web + API, règlements, impayés, relances ; stock et salaires à venir)
-7. Tableaux de bord et reporting
+6. Facturation, stock et salaires — **terminé** (web + API, règlements, impayés, relances, mouvements de stock, paie et bulletins)
+7. Tableaux de bord et reporting — **terminé** (indicateurs financiers, médicaux, logistiques et rapports de direction)

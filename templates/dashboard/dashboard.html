@@ -11,25 +11,28 @@
             {{ clinic.name }}{% if clinic.city %} — {{ clinic.city }}{% endif %}
         </p>
     </div>
-    <span class="badge">{{ today|date:"l j F Y" }}</span>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <a class="btn btn--secondary btn--sm" href="{% url 'web:reporting' %}">{% translate "Rapports & Indicateurs" %}</a>
+        <span class="badge">{{ today|date:"l j F Y" }}</span>
+    </div>
 </header>
 
 <section class="grid grid--4">
     <article class="card card--stat">
-        <p class="card__label">{% translate "Membres du personnel" %}</p>
+        <p class="card__label">{% translate "Personnel" %}</p>
         <p class="card__value">{{ total_staff }}</p>
     </article>
     <article class="card card--stat">
-        <p class="card__label">{% translate "Médecins" %}</p>
-        <p class="card__value">{{ role_counts.DOCTOR|default:"0" }}</p>
+        <p class="card__label">{% translate "Patients actifs" %}</p>
+        <p class="card__value">{{ patients_count }}</p>
     </article>
     <article class="card card--stat">
-        <p class="card__label">{% translate "Infirmiers" %}</p>
-        <p class="card__value">{{ role_counts.NURSE|default:"0" }}</p>
+        <p class="card__label">{% translate "Produits stock" %}</p>
+        <p class="card__value">{{ products_count }} {% if low_stock_count %}<span class="badge badge--warn" style="font-size: 0.7rem;">(!{{ low_stock_count }})</span>{% endif %}</p>
     </article>
     <article class="card card--stat">
-        <p class="card__label">{% translate "Comptabilité" %}</p>
-        <p class="card__value">{{ role_counts.ACCOUNTANT|default:"0" }}</p>
+        <p class="card__label">{% translate "Facturé total" %}</p>
+        <p class="card__value" style="font-size: 1.2rem;">{{ total_invoiced|floatformat:0 }} MAD</p>
     </article>
 </section>
 
@@ -82,13 +85,15 @@
 </section>
 
 <section class="card card--muted">
-    <h2>{% translate "Jalons à venir" %}</h2>
+    <h2>{% translate "Jalons du projet" %}</h2>
     <ol class="milestones">
-        <li>{% translate "Jalon 2 — Patients, rendez-vous et notifications" %}</li>
-        <li>{% translate "Jalon 3 — Consultations, dossier médical et transfert" %}</li>
-        <li>{% translate "Jalon 4 — Facturation, assurances et dépenses" %}</li>
-        <li>{% translate "Jalon 5 — Produits, stock et achats" %}</li>
-        <li>{% translate "Jalon 6 — Paie et rapports" %}</li>
+        <li>{% translate "Jalon 1 — Socle multi-clinique, rôles, auth web/API" %} — <strong>Terminé</strong></li>
+        <li>{% translate "Jalon 2 — Dossiers patients" %} — <strong>Terminé</strong></li>
+        <li>{% translate "Jalon 3 — Agenda et rendez-vous" %} — <strong>Terminé</strong></li>
+        <li>{% translate "Jalon 4 — Consultations et dossiers médicaux" %} — <strong>Terminé</strong></li>
+        <li>{% translate "Jalon 5 — Notifications et rappels" %} — <strong>Terminé</strong></li>
+        <li>{% translate "Jalon 6 — Facturation, stock et salaires" %} — <strong>Terminé</strong></li>
+        <li>{% translate "Jalon 7 — Tableaux de bord et reporting" %} — <strong>Terminé</strong></li>
     </ol>
 </section>
 {% endblock %}

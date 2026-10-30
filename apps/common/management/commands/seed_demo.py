@@ -44,6 +44,7 @@ from apps.consultations.services import (
 from apps.medical_records.models import MedicalRecord
 from apps.medical_records.services import add_document, create_share, ensure_record
 from apps.patients.models import Patient
+
 DEFAULT_PASSWORD = "Madara2026!"
 
 FIRST_NAMES = [
@@ -839,11 +840,10 @@ class Command(BaseCommand):
             self.stdout.write(f"  {len(created)} dossiers patients créés.")
             return created
 
-
     # -- Stock (jalon 6) ---------------------------------------------------
 
     #: catalogue de démonstration :
-    #(désignation, catégorie, unité, achat, vente, stock visé, seuil d'alerte)
+    # (désignation, catégorie, unité, achat, vente, stock visé, seuil d'alerte)
     SEED_PRODUCTS = [
         ("Paracétamol 500 mg (boîte)", "MEDICINE", "boîte", "12.00", "18.00", 60, 10),
         ("Amoxicilline 1 g (boîte)", "MEDICINE", "boîte", "22.00", "35.00", 40, 10),

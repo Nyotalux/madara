@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% translate "Rapports et indicateurs" %} — {{ clinic.name }}{% endblock %}
+
+{% block content %}
+<header class="page__header">
+    <div>
+        <h1>{% translate "Rapports et indicateurs" %}</h1>
+        <p class="muted">{{ clinic.name }} — {% translate "Synthèse globale de l'activité (Jalon 7)" %}</p>
+    </div>
+    <a class="btn btn--secondary" href="{% url 'web:dashboard' %}">{% translate "Tableau de bord" %}</a>
+</header>
+
+<section class="grid grid--3">
+    <article class="card">
+        <h2>{% translate "Patients" %}</h2>
+        <p class="card__value">{{ patients_stats.total }}</p>
+        <ul class="list small">
+            <li class="list__item"><span>{% translate "Actifs" %}</span> <strong>{{ patients_stats.active }}</strong></li>
+            <li class="list__item"><span>{% translate "Assurés" %}</span> <strong>{{ patients_stats.insured }}</strong></li>
+            <li class="list__item"><span>{% translate "Archivés" %}</span> <strong>{{ patients_stats.archived }}</strong></li>
+        </ul>
+    </article>
+
+    <article class="card">
+        <h2>{% translate "Consultations" %}</h2>
+        <p class="card__value">{{ consultations_stats.total }}</p>
+        <ul class="list small">
+            <li class="list__item"><span>{% translate "Terminées" %}</span> <strong>{{ consultations_stats.completed }}</strong></li>
+            <li class="list__item"><span>{% translate "Annulées" %}</span> <strong>{{ consultations_stats.cancelled }}</strong></li>
+        </ul>
+    </article>
+
+    <article class="card">
+        <h2>{% translate "Stock & Logistique" %}</h2>
+        <p class="card__value">{{ inventory_stats.products }} {% translate "produits" %}</p>
+        <ul class="list small">
+            <li class="list__item"><span>{% translate "Stock bas / ruptures" %}</span> <strong class="badge badge--warn">{{ inventory_stats.low_stock }}</strong></li>
+            <li class="list__item"><span>{% translate "Valeur du stock" %}</span> <strong>{{ inventory_stats.stock_value|floatformat:2 }} MAD</strong></li>
+        </ul>
+    </article>
+</section>
+
+<section class="grid grid--2" style="margin-top: 1.5rem;">
+    <article class="card">
+        <h2>{% translate "Facturation & Finances" %}</h2>
+        <ul class="list">
+            <li class="list__item"><span>{% translate "Total facturé" %}</span> <strong>{{ billing_stats.total_invoiced|floatformat:2 }} MAD</strong></li>
+            <li class="list__item"><span>{% translate "Total encaissé" %}</span> <strong>{{ billing_stats.total_collected|floatformat:2 }} MAD</strong></li>
+            <li class="list__item"><span>{% translate "Factures impayées échues" %}</span> <strong class="badge badge--danger">{{ billing_stats.overdue_count }}</strong></li>
+        </ul>
+        <p style="margin-top: 1rem;"><a class="btn btn--sm btn--ghost" href="{% url 'web:invoice-list' %}">{% translate "Gérer la facturation" %}</a></p>
+    </article>
+
+    <article class="card">
+        <h2>{% translate "Paie (Période {{ payroll_stats.period }})" %}</h2>
+        <ul class="list">
+            <li class="list__item"><span>{% translate "Bulletins établis" %}</span> <strong>{{ payroll_stats.payslips_count }}</strong></li>
+            <li class="list__item"><span>{% translate "Masse nette" %}</span> <strong>{{ payroll_stats.total_net|floatformat:2 }} MAD</strong></li>
+        </ul>
+        <p style="margin-top: 1rem;"><a class="btn btn--sm btn--ghost" href="{% url 'web:payroll-home' %}">{% translate "Gérer la paie" %}</a></p>
+    </article>
+</section>
+{% endblock %}

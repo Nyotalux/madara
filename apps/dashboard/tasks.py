@@ -33,7 +33,7 @@ def send_daily_report():
     day_end = day_start + timezone.timedelta(days=1)
 
     summary = {"clinics": 0, "notices": 0}
-    for clinic in Clinic.all_objects.filter(is_active=True):
+    for clinic in Clinic.objects.all():
         collected_today = Payment.objects.filter(
             clinic_id=clinic.pk, paid_at__gte=day_start, paid_at__lt=day_end
         ).aggregate(total=Sum("amount"))["total"] or Decimal("0")
@@ -44,8 +44,10 @@ def send_daily_report():
             clinic=clinic,
             channel=Notification.Channel.IN_APP,
             category=Notification.Category.SYSTEM,
-            title=_("[%(clinique)s] Rapport du %(date)s")
-            % {"clinique": clinic.name, "date": today.strftime("%d/%m/%Y")},
+            title=str(
+                _("[%(clinique)s] Rapport du %(date)s")
+                % {"clinique": clinic.name, "date": today.strftime("%d/%m/%Y")}
+            ),
             body=_report_text(collected_today, overdue, low_stock),
         )
         notice.full_clean()
@@ -59,25 +61,31 @@ def send_daily_report():
 
 def _report_text(collected_today: Decimal, overdue, low_stock) -> str:
     lines = [
-        _("Recette encaissée du jour : %(montant)s")
-        % {"montant": f"{collected_today:.2f}"},
+        str(
+            _("Recette encaissée du jour : %(montant)s")
+            % {"montant": f"{collected_today:.2f}"}
+        ),
     ]
     if overdue:
         lines.append(
-            _("%(count)s facture(s) impayée(s) échue(s), pour %(total)s en attente")
-            % {
-                "count": len(overdue),
-                "total": f"{sum(invoice.amount_due for invoice in overdue):.2f}",
-            }
+            str(
+                _("%(count)s facture(s) impayée(s) échue(s), pour %(total)s en attente")
+                % {
+                    "count": len(overdue),
+                    "total": f"{sum(invoice.amount_due for invoice in overdue):.2f}",
+                }
+            )
         )
     else:
-        lines.append(_("Aucune facture impayée échue."))
+        lines.append(str(_("Aucune facture impayée échue.")))
     if low_stock:
         names = ", ".join(product.name for product in low_stock[:10])
         lines.append(
-            _("%(count)s produit(s) en stock bas : %(noms)s")
-            % {"count": len(low_stock), "noms": names}
+            str(
+                _("%(count)s produit(s) en stock bas : %(noms)s")
+                % {"count": len(low_stock), "noms": names}
+            )
         )
     else:
-        lines.append(_("Aucun produit sous le seuil d'alerte."))
+        lines.append(str(_("Aucun produit sous le seuil d'alerte.")))
     return "\n".join(lines)
