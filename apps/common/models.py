@@ -67,13 +67,19 @@ class SoftDeleteQuerySet(ClinicScopedQuerySet):
 
 
 def _scope_by_current_clinic(queryset):
-    """Applique le filtre de clinique courante sauf pour les comptes plateforme."""
+    """Applique le filtre de clinique courante sauf pour les comptes plateforme.
+    
+    Si aucune clinique n'est en contexte (ex: phase de login ou tâche de fond sans 
+    contexte explicite), on ne filtre pas pour permettre la résolution du contexte.
+    """
     user = current_user.get()
     if user is not None and getattr(user, "is_platform_staff", False):
         return queryset
+    
     clinic = current_clinic.get()
     if clinic is None:
         return queryset
+    
     return queryset.filter(clinic=clinic)
 
 

@@ -14,6 +14,7 @@ djangorestframework-simplejwt==5.5.1
 drf-spectacular==0.28.0
 django-filter==25.2
 django-cors-headers==4.9.0
+django-simple-history==3.13.0
 
 # --- Web (templates + HTMX) ------------------------------------------------
 django-environ==0.12.0

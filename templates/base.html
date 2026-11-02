@@ -15,10 +15,15 @@
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 <a class="skip-link" href="#contenu">Aller au contenu</a>
 
-<header class="topbar">
-    <div class="topbar__brand">
-        <span class="brand-mark" aria-hidden="true">✚</span>
-        <span class="brand-name">Madara</span>
+<header class="topbar odoo-topbar">
+    <div class="topbar__left-group">
+        <button type="button" class="odoo-app-toggle" onclick="toggleOdooLauncher()" title="{% translate 'Menu des applications' %}">
+            <span class="odoo-grid-icon">∷∷∷</span>
+        </button>
+        <div class="topbar__brand">
+            <span class="brand-mark" aria-hidden="true">✚</span>
+            <span class="brand-name">Madara <small style="opacity:.8; font-size:.65em; font-weight:normal;">ERP</small></span>
+        </div>
     </div>
 
     <nav class="topbar__nav" aria-label="Navigation principale">
@@ -26,9 +31,6 @@
             {% translate "Tableau de bord" %}
         </a>
         {% if current_clinic %}
-            <a href="{% url 'web:staff-list' %}" class="{% if 'staff' in request.resolver_match.url_name %}is-active{% endif %}">
-                {% translate "Personnel" %}
-            </a>
             <a href="{% url 'web:patient-list' %}" class="{% if 'patient' in request.resolver_match.url_name or 'medical' in request.resolver_match.url_name %}is-active{% endif %}">
                 {% translate "Patients" %}
             </a>
@@ -37,6 +39,9 @@
             </a>
             <a href="{% url 'web:consultation-list' %}" class="{% if 'consultation' in request.resolver_match.url_name or 'prescription' in request.resolver_match.url_name %}is-active{% endif %}">
                 {% translate "Consultations" %}
+            </a>
+            <a href="{% url 'web:staff-list' %}" class="{% if 'staff' in request.resolver_match.url_name %}is-active{% endif %}">
+                {% translate "Personnel" %}
             </a>
             <a href="{% url 'web:notification-list' %}" class="{% if 'notification' in request.resolver_match.url_name %}is-active{% endif %}">
                 {% translate "Notifications" %}
@@ -91,6 +96,75 @@
         {% endif %}
     </div>
 </header>
+
+<!-- Odoo App Switcher Launcher Modal / Drawer -->
+<div id="odoo-launcher" class="odoo-launcher" style="display: none;" onclick="if(event.target === this) toggleOdooLauncher();">
+    <div class="odoo-launcher__content">
+        <div class="odoo-launcher__header">
+            <h3>{% translate "Applications Madara ERP" %}</h3>
+            <button type="button" class="btn btn--ghost btn--sm" onclick="toggleOdooLauncher()">✕</button>
+        </div>
+        <div class="odoo-app-grid">
+            <a href="{% url 'web:dashboard' %}" class="odoo-app-tile">
+                <span class="odoo-app-icon">📊</span>
+                <span class="odoo-app-title">{% translate "Tableau de bord" %}</span>
+            </a>
+            {% if current_clinic %}
+                <a href="{% url 'web:patient-list' %}" class="odoo-app-tile">
+                    <span class="odoo-app-icon">👥</span>
+                    <span class="odoo-app-title">{% translate "Patients" %}</span>
+                </a>
+                <a href="{% url 'web:agenda' %}" class="odoo-app-tile">
+                    <span class="odoo-app-icon">📅</span>
+                    <span class="odoo-app-title">{% translate "Agenda & RDV" %}</span>
+                </a>
+                <a href="{% url 'web:consultation-list' %}" class="odoo-app-tile">
+                    <span class="odoo-app-icon">🩺</span>
+                    <span class="odoo-app-title">{% translate "Consultations" %}</span>
+                </a>
+                <a href="{% url 'web:staff-list' %}" class="odoo-app-tile">
+                    <span class="odoo-app-icon">👔</span>
+                    <span class="odoo-app-title">{% translate "Personnel" %}</span>
+                </a>
+                <a href="{% url 'web:notification-list' %}" class="odoo-app-tile">
+                    <span class="odoo-app-icon">🔔</span>
+                    <span class="odoo-app-title">{% translate "Notifications" %}</span>
+                </a>
+                {% if current_membership and current_membership.role != 'DOCTOR' and current_membership.role != 'NURSE' %}
+                    <a href="{% url 'web:invoice-list' %}" class="odoo-app-tile">
+                        <span class="odoo-app-icon">💶</span>
+                        <span class="odoo-app-title">{% translate "Facturation" %}</span>
+                    </a>
+                    <a href="{% url 'web:product-list' %}" class="odoo-app-tile">
+                        <span class="odoo-app-icon">📦</span>
+                        <span class="odoo-app-title">{% translate "Stock" %}</span>
+                    </a>
+                    {% if current_membership.role == 'ADMIN' or current_membership.role == 'ACCOUNTANT' %}
+                        <a href="{% url 'web:payroll-home' %}" class="odoo-app-tile">
+                            <span class="odoo-app-icon">💰</span>
+                            <span class="odoo-app-title">{% translate "Salaires & Paie" %}</span>
+                        </a>
+                    {% endif %}
+                {% endif %}
+                <a href="{% url 'web:reporting' %}" class="odoo-app-tile">
+                    <span class="odoo-app-icon">📈</span>
+                    <span class="odoo-app-title">{% translate "Rapports" %}</span>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleOdooLauncher() {
+    const launcher = document.getElementById('odoo-launcher');
+    if (launcher.style.display === 'none' || !launcher.style.display) {
+        launcher.style.display = 'flex';
+    } else {
+        launcher.style.display = 'none';
+    }
+}
+</script>
 
 {% if messages %}
     <ul class="flash-messages" role="status">

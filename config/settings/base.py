@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "django_filters",
     "drf_spectacular",
+    "simple_history",
     # --- Applications du projet
     "apps.common",
     "apps.accounts",
@@ -80,6 +81,7 @@ MIDDLEWARE = [
     "django_htmx.middleware.HtmxMiddleware",
     # Résout la clinique courante (session web / en-tête X-Clinic en API).
     "apps.common.middleware.CurrentClinicMiddleware",
+    "simple_history.middleware.HistoryRequestMiddleware",
 ]
 
 TEMPLATES = [
@@ -197,6 +199,16 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/day",
+        "user": "1000/day",
+        "burst": "60/minute",
+        "sustained": "1000/hour",
+    },
     "DEFAULT_FILTER_BACKENDS": (
         "django_filters.rest_framework.DjangoFilterBackend",
         "rest_framework.filters.SearchFilter",

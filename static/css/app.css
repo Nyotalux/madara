@@ -315,3 +315,174 @@ input:focus, select:focus, textarea:focus {
 .week__empty { color: var(--c-muted); text-align: center; }
 
 .details summary { cursor: pointer; color: var(--c-muted); font-size: .9rem; }
+
+/* --- Odoo 17 Enterprise Design System ------------------------------------ */
+:root {
+    --c-odoo17-bg: #f3f4f6;
+    --c-odoo17-surface: #ffffff;
+    --c-odoo17-border: #e5e7eb;
+    --c-odoo17-primary: #714B67; /* Odoo Purple */
+    --c-odoo17-primary-hover: #5d3e55;
+    --c-odoo17-text: #111827;
+    --c-odoo17-muted: #6b7280;
+    --c-odoo17-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+body {
+    background: var(--c-odoo17-bg);
+    color: var(--c-odoo17-text);
+}
+
+.odoo-topbar {
+    background: #212529 !important; /* Odoo 17 dark top bar */
+    color: #ffffff;
+    border-bottom: 1px solid rgba(255,255,255,0.1) !important;
+}
+
+.odoo-topbar .topbar__brand,
+.odoo-topbar .user-menu__name,
+.odoo-topbar .user-menu__role,
+.odoo-topbar .clinic-chip {
+    color: #ffffff;
+}
+
+.topbar__left-group {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.odoo-app-toggle {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #fff;
+    padding: .4rem .7rem;
+    border-radius: 6px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background .15s;
+}
+.odoo-app-toggle:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+.odoo-launcher {
+    position: fixed;
+    top: 52px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(17, 24, 39, 0.65);
+    backdrop-filter: blur(6px);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 1rem;
+}
+
+.odoo-launcher__content {
+    background: #ffffff;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 720px;
+    padding: 2rem;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    animation: odoo17Pop .2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes odoo17Pop {
+    from { transform: scale(0.96) translateY(-10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.odoo-launcher__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--c-odoo17-border);
+    padding-bottom: .75rem;
+}
+.odoo-launcher__header h3 { margin: 0; color: var(--c-odoo17-text); }
+
+.odoo-app-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 1rem;
+}
+
+.odoo-app-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f9fafb;
+    border: 1px solid var(--c-odoo17-border);
+    border-radius: 12px;
+    padding: 1.5rem 1rem;
+    text-align: center;
+    color: var(--c-odoo17-text);
+    transition: all .2s ease;
+    text-decoration: none;
+}
+
+.odoo-app-tile:hover {
+    background: #ffffff;
+    border-color: var(--c-odoo17-primary);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+    text-decoration: none;
+}
+
+.odoo-app-icon {
+    font-size: 2.5rem;
+    margin-bottom: .6rem;
+}
+
+.odoo-app-title {
+    font-size: .88rem;
+    font-weight: 600;
+}
+
+.page__header {
+    background: var(--c-odoo17-surface);
+    border: 1px solid var(--c-odoo17-border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: var(--c-odoo17-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.page__actions {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+}
+
+.table tr:hover td {
+    background: #f9fafb;
+}
+
+.card {
+    background: var(--c-odoo17-surface);
+    border: 1px solid var(--c-odoo17-border);
+    border-radius: 10px;
+    box-shadow: var(--c-odoo17-shadow);
+}
+
+.btn--primary {
+    background: var(--c-odoo17-primary);
+    color: #fff;
+    font-weight: 600;
+    border-radius: 8px;
+}
+.btn--primary:hover {
+    background: var(--c-odoo17-primary-hover);
+}
+
+

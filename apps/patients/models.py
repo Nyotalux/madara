@@ -7,6 +7,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator, RegexVa
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
+from simple_history.models import HistoricalRecords
 
 from apps.common.models import BaseModel, CommentMixin, UUIDModel
 from apps.common.numbers import (
@@ -117,6 +118,8 @@ class Patient(BaseModel, UUIDModel, CommentMixin):
     preferred_language = models.CharField(
         _("langue parlée"), max_length=8, blank=True, default="fr"
     )
+
+    history = HistoricalRecords()
 
     class Meta:
         verbose_name = _("patient")
